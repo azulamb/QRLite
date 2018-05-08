@@ -1,0 +1,16 @@
+{
+	"compilerOptions": {
+		"outFile": "../../index.js",
+		"module": "amd",
+		"target": "es6",
+		"declaration": true,
+		"strictNullChecks": true,
+		"noImplicitAny": true,
+		"removeComments": true,
+		"preserveConstEnums": false,
+		"sourceMap": false
+	},
+	"include": [
+		"./index.ts"
+	]
+}
