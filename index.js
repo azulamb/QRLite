@@ -1,6 +1,846 @@
 var QRLite;
 (function (QRLite) {
-    QRLite.QR = {
+    const W = 0;
+    const B = 1;
+    class Byte {
+        constructor(bytesize) {
+            this.byte = new Uint8Array(bytesize);
+            this.wbit = 0;
+        }
+        size() { return this.byte.length; }
+        writeByteSize() { return Math.ceil(this.wbit / 8); }
+        get() { return this.byte; }
+        addBit(...bitarray) {
+            bitarray.forEach((bit) => {
+                if (bit) {
+                    this.byte[Math.floor(this.wbit / 8)] |= 1 << (7 - this.wbit % 8);
+                }
+                ++this.wbit;
+            });
+        }
+        add0Bit(count) {
+            if (count === undefined) {
+                count = this.wbit % 8;
+            }
+            this.wbit += count;
+        }
+        addByte(data) {
+            if (this.wbit % 8 === 0) {
+                data.forEach((byte) => {
+                    this.byte[Math.floor(this.wbit / 8)] = byte;
+                    this.wbit += 8;
+                });
+                return;
+            }
+            data.forEach((byte) => {
+                this.addBit(byte & 0x80, byte & 0x40, byte & 0x20, byte & 0x10, byte & 0x8, byte & 0x4, byte & 0x2, byte & 0x1);
+            });
+        }
+        addByteNumber(byte) {
+            if (this.wbit % 8 === 0) {
+                this.byte[Math.floor(this.wbit / 8)] = byte;
+                this.wbit += 8;
+                return;
+            }
+            this.addBit(byte & 0x80, byte & 0x40, byte & 0x20, byte & 0x10, byte & 0x8, byte & 0x4, byte & 0x2, byte & 0x1);
+        }
+    }
+    class BitReader {
+        constructor(byte) {
+            this.byte = byte;
+            this.cursor = 0;
+        }
+        hasNext() { return this.cursor < this.byte.length * 8; }
+        getNow() {
+            const b = this.byte[Math.floor(this.cursor / 8)];
+            return !!(b & (1 << (7 - (this.cursor % 8))));
+        }
+        getNext() {
+            const b = this.byte[Math.floor(this.cursor / 8)];
+            return !!(b & (1 << (7 - (this.cursor++ % 8))));
+        }
+    }
+    class BitCanvas {
+        constructor(w, h) {
+            this.width = w;
+            this.height = h;
+            this.bitarray = new Array(w * h);
+        }
+        clone() {
+            const canvas = new BitCanvas(this.width, this.height);
+            canvas.drawFromBitarray(this.bitarray);
+            return canvas;
+        }
+        reverse(func, mask) {
+            for (let i = 0; i < this.bitarray.length; ++i) {
+                if (!mask[i] || !func(i % this.width, Math.floor(i / this.width))) {
+                    continue;
+                }
+                this.bitarray[i] = !this.bitarray[i];
+            }
+            return this;
+        }
+        getPixel(x, y) {
+            if (x < 0 || this.width <= x || y < 0 || this.height <= y) {
+                return undefined;
+            }
+            return this.bitarray[y * this.width + x];
+        }
+        getPixels() { return this.bitarray; }
+        drawPixel(x, y, black) {
+            if (x < 0 || this.width <= x || y < 0 || this.height <= y) {
+                return;
+            }
+            this.bitarray[y * this.width + x] = !!black;
+            return this;
+        }
+        drawFromBitarray(bitarray) {
+            for (let i = 0; i < bitarray.length && i < this.bitarray.length; ++i) {
+                this.bitarray[i] = !!bitarray[i];
+            }
+            return this;
+        }
+        isTransparentPixel(x, y) {
+            if (x < 0 || this.width <= x || y < 0 || this.height <= y) {
+                return false;
+            }
+            return this.bitarray[y * this.width + x] === undefined;
+        }
+        drawTimingPattern() {
+            for (let x = 0; x < this.width; ++x) {
+                this.drawPixel(x, 6, !(x % 2));
+            }
+            for (let y = 0; y < this.height; ++y) {
+                this.drawPixel(6, y, !(y % 2));
+            }
+            return this;
+        }
+        drawQRInfo(level, mask) {
+            const data = [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true];
+            switch (level) {
+                case 'L':
+                    data[0] = false;
+                    data[1] = true;
+                    break;
+                case 'M':
+                    data[0] = false;
+                    data[1] = false;
+                    break;
+                case 'Q':
+                    data[0] = true;
+                    data[1] = true;
+                    break;
+                case 'H':
+                    data[0] = true;
+                    data[1] = false;
+                    break;
+            }
+            switch (mask) {
+                case 0:
+                    data[2] = false;
+                    data[3] = false;
+                    data[4] = false;
+                    break;
+                case 1:
+                    data[2] = false;
+                    data[3] = false;
+                    data[4] = true;
+                    break;
+                case 2:
+                    data[2] = false;
+                    data[3] = true;
+                    data[4] = false;
+                    break;
+                case 3:
+                    data[2] = false;
+                    data[3] = true;
+                    data[4] = true;
+                    break;
+                case 4:
+                    data[2] = true;
+                    data[3] = false;
+                    data[4] = false;
+                    break;
+                case 5:
+                    data[2] = true;
+                    data[3] = false;
+                    data[4] = true;
+                    break;
+                case 6:
+                    data[2] = true;
+                    data[3] = true;
+                    data[4] = false;
+                    break;
+                case 7:
+                    data[2] = true;
+                    data[3] = true;
+                    data[4] = true;
+                    break;
+            }
+            if (level !== undefined && mask !== undefined) {
+                const k = [
+                    data[0], data[1], data[2], data[3], data[4],
+                    false, false, false, false, false, false, false, false, false, false,
+                ];
+                let a = 0;
+                if (data[0]) {
+                    a = 4;
+                }
+                else if (data[1]) {
+                    a = 3;
+                }
+                else if (data[2]) {
+                    a = 2;
+                }
+                else if (data[3]) {
+                    a = 1;
+                }
+                else if (data[4]) {
+                    a = 0;
+                }
+                const g = [true, false, true, false, false, true, true, false, true, true, true];
+                for (let i = 0; i < 5; ++i) {
+                    if (!k[i]) {
+                        continue;
+                    }
+                    for (let j = 0; j < g.length; ++j) {
+                        k[i + j] = k[i + j] !== g[j];
+                    }
+                }
+                for (let i = 5; i < data.length; ++i) {
+                    data[i] = k[i];
+                }
+                data[0] = data[0] !== true;
+                data[1] = data[1] !== false;
+                data[2] = data[2] !== true;
+                data[3] = data[3] !== false;
+                data[4] = data[4] !== true;
+                data[5] = data[5] !== false;
+                data[6] = data[6] !== false;
+                data[7] = data[7] !== false;
+                data[8] = data[8] !== false;
+                data[9] = data[9] !== false;
+                data[10] = data[10] !== true;
+                data[11] = data[11] !== false;
+                data[12] = data[12] !== false;
+                data[13] = data[13] !== true;
+                data[14] = data[14] !== false;
+            }
+            this.drawPixel(8, 0, data[14]);
+            this.drawPixel(8, 1, data[13]);
+            this.drawPixel(8, 2, data[12]);
+            this.drawPixel(8, 3, data[11]);
+            this.drawPixel(8, 4, data[10]);
+            this.drawPixel(8, 5, data[9]);
+            this.drawPixel(8, 7, data[8]);
+            this.drawPixel(8, 8, data[7]);
+            this.drawPixel(7, 8, data[6]);
+            this.drawPixel(5, 8, data[5]);
+            this.drawPixel(4, 8, data[4]);
+            this.drawPixel(3, 8, data[3]);
+            this.drawPixel(2, 8, data[2]);
+            this.drawPixel(1, 8, data[1]);
+            this.drawPixel(0, 8, data[0]);
+            this.drawPixel(this.width - 8, 8, data[7]);
+            this.drawPixel(this.width - 7, 8, data[8]);
+            this.drawPixel(this.width - 6, 8, data[9]);
+            this.drawPixel(this.width - 5, 8, data[10]);
+            this.drawPixel(this.width - 4, 8, data[11]);
+            this.drawPixel(this.width - 3, 8, data[12]);
+            this.drawPixel(this.width - 2, 8, data[13]);
+            this.drawPixel(this.width - 1, 8, data[14]);
+            this.drawPixel(8, this.height - 8, false);
+            this.drawPixel(8, this.height - 7, data[6]);
+            this.drawPixel(8, this.height - 6, data[5]);
+            this.drawPixel(8, this.height - 5, data[4]);
+            this.drawPixel(8, this.height - 4, data[3]);
+            this.drawPixel(8, this.height - 3, data[2]);
+            this.drawPixel(8, this.height - 2, data[1]);
+            this.drawPixel(8, this.height - 1, data[0]);
+            return this;
+        }
+        drawFinderPattern(x, y) {
+            const pattern = [
+                W, W, W, W, W, W, W, W, W,
+                W, B, B, B, B, B, B, B, W,
+                W, B, W, W, W, W, W, B, W,
+                W, B, W, B, B, B, W, B, W,
+                W, B, W, B, B, B, W, B, W,
+                W, B, W, B, B, B, W, B, W,
+                W, B, W, W, W, W, W, B, W,
+                W, B, B, B, B, B, B, B, W,
+                W, W, W, W, W, W, W, W, W,
+            ];
+            this.drawPattern(pattern, x, y, 9, 9);
+            return this;
+        }
+        drawAlignmentPattern(x, y) {
+            const pattern = [
+                B, B, B, B, B,
+                B, W, W, W, B,
+                B, W, B, W, B,
+                B, W, W, W, B,
+                B, B, B, B, B,
+            ];
+            this.drawPattern(pattern, x, y, 5, 5);
+            return this;
+        }
+        drawPattern(pattern, x, y, w, h) {
+            for (let b = 0; b < h; ++b) {
+                for (let a = 0; a < w; ++a) {
+                    this.drawPixel(x + a, y + b, !!pattern[b * w + a]);
+                }
+            }
+            this.drawPixel(8, this.height - 8, false);
+            return this;
+        }
+        drawQRByte(byte, cursor) {
+            if (!cursor) {
+                cursor = { x: this.width - 1, y: this.height - 1, up: true, right: true };
+            }
+            const reader = new BitReader(byte);
+            while (reader.hasNext()) {
+                this.drawPixel(cursor.x - (cursor.right ? 0 : 1), cursor.y, reader.getNext());
+                if (cursor.right) {
+                    if (this.isTransparentPixel(cursor.x - 1, cursor.y)) {
+                        cursor.right = false;
+                        continue;
+                    }
+                    let nexty = this.existsEmpty(cursor.x, cursor.y, cursor.up);
+                    while (nexty < 0) {
+                        if (this.noEmptyLine(cursor.x - 2)) {
+                            --cursor.x;
+                        }
+                        cursor.right = true;
+                        cursor.up = !cursor.up;
+                        cursor.y = cursor.up ? this.height - 1 : 0;
+                        cursor.x -= 2;
+                        if (cursor.x < 0) {
+                            break;
+                        }
+                        nexty = this.existsEmpty(cursor.x, cursor.y, cursor.up);
+                    }
+                    if (cursor.x < 0) {
+                        break;
+                    }
+                    cursor.y = nexty;
+                }
+                else {
+                    cursor.right = true;
+                    let nexty = this.existsEmpty(cursor.x, cursor.y, cursor.up);
+                    while (nexty < 0) {
+                        if (this.noEmptyLine(cursor.x - 2)) {
+                            --cursor.x;
+                        }
+                        cursor.right = true;
+                        cursor.up = !cursor.up;
+                        cursor.y = cursor.up ? this.height - 1 : 0;
+                        cursor.x -= 2;
+                        if (cursor.x < 0) {
+                            break;
+                        }
+                        nexty = this.existsEmpty(cursor.x, cursor.y, cursor.up);
+                    }
+                    if (cursor.x < 0) {
+                        break;
+                    }
+                    cursor.y = nexty;
+                    if (this.isTransparentPixel(cursor.x, cursor.y)) {
+                        continue;
+                    }
+                    cursor.right = false;
+                }
+            }
+            if (reader.hasNext()) {
+                console.log('Error: Data overflow!');
+            }
+            return cursor;
+        }
+        fillEmptyWhite() {
+            const length = this.width * this.height;
+            let count = 0;
+            for (let i = 0; i < length; ++i) {
+                if (this.bitarray[i] === undefined) {
+                    this.bitarray[i] = !!W;
+                    ++count;
+                }
+            }
+            return count;
+        }
+        existsEmpty(rx, y, up) {
+            if (up) {
+                for (; 0 <= y; --y) {
+                    if (this.isTransparentPixel(rx, y) || this.isTransparentPixel(rx - 1, y)) {
+                        return y;
+                    }
+                }
+                return -1;
+            }
+            for (; y < this.height; ++y) {
+                if (this.isTransparentPixel(rx, y) || this.isTransparentPixel(rx - 1, y)) {
+                    return y;
+                }
+            }
+            return -1;
+        }
+        noEmptyLine(x) {
+            for (let y = 0; y < this.height; ++y) {
+                if (this.isTransparentPixel(x, y)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        print(white = '██', black = '  ', none = '--') {
+            for (let y = 0; y < this.height; ++y) {
+                const line = [];
+                for (let x = 0; x < this.width; ++x) {
+                    line.push(this.bitarray[y * this.height + x] === undefined ? none : (this.bitarray[y * this.height + x] ? black : white));
+                }
+                console.log(line.join(''));
+            }
+        }
+        outputBitmapByte(frame = 1) {
+            const byte = [];
+            if (frame <= 0) {
+                frame = 0;
+            }
+            byte.push(0x42, 0x4D);
+            byte.push(0, 0, 0, 0);
+            byte.push(0, 0, 0, 0);
+            byte.push(0, 0, 0, 0);
+            byte.push(...this.numberToLE4Byte(40));
+            byte.push(...this.numberToLE4Byte(this.width + frame * 2));
+            byte.push(...this.numberToLE4Byte(this.height + frame * 2));
+            byte.push(1, 0);
+            byte.push(1, 0);
+            byte.push(0, 0, 0, 0);
+            byte.push(0, 0, 0, 0);
+            byte.push(0, 0, 0, 0);
+            byte.push(0, 0, 0, 0);
+            byte.push(0, 0, 0, 0);
+            byte.push(0, 0, 0, 0);
+            byte.push(0, 0, 0, 0);
+            byte.push(255, 255, 255, 0);
+            const offset = this.numberToLE4Byte(byte.length);
+            byte[10] = offset[0];
+            byte[11] = offset[1];
+            byte[12] = offset[2];
+            byte[13] = offset[3];
+            for (let y = 0; y < frame; ++y) {
+                const length = this.width + frame * 2;
+                let count = 0;
+                let x;
+                for (x = 0; x < length; x += 8) {
+                    ++count;
+                    byte.push(255);
+                }
+                if (length % 8 !== 0) {
+                    ++count;
+                    x = length % 8;
+                    const dot8 = [false, false, false, false, false, false, false, false];
+                    for (let i = 0; i < 8; ++i) {
+                        dot8[i] = i < x;
+                    }
+                    byte.push((dot8[0] ? 128 : 0) + (dot8[1] ? 64 : 0) + (dot8[2] ? 32 : 0) + (dot8[3] ? 16 : 0) + (dot8[4] ? 8 : 0) + (dot8[5] ? 4 : 0) + (dot8[6] ? 2 : 0) + (dot8[7] ? 1 : 0));
+                }
+                while (count % 4 !== 0) {
+                    ++count;
+                    byte.push(0);
+                }
+            }
+            for (let y = this.height - 1; 0 <= y; --y) {
+                const dot8 = [false, false, false, false, false, false, false, false];
+                let x;
+                let count = 0;
+                let w = 0;
+                for (x = -frame; x < this.width + frame; ++x) {
+                    if (x < 0 || this.width <= x) {
+                        dot8[w] = true;
+                    }
+                    else {
+                        dot8[w] = !this.bitarray[y * this.width + x];
+                    }
+                    if (++w === 8) {
+                        ++count;
+                        byte.push((dot8[0] ? 128 : 0) + (dot8[1] ? 64 : 0) + (dot8[2] ? 32 : 0) + (dot8[3] ? 16 : 0) + (dot8[4] ? 8 : 0) + (dot8[5] ? 4 : 0) + (dot8[6] ? 2 : 0) + (dot8[7] ? 1 : 0));
+                        dot8[0] = dot8[1] = dot8[2] = dot8[3] = dot8[4] = dot8[5] = dot8[6] = dot8[7] = false;
+                        w = 0;
+                    }
+                }
+                if (w % 8 !== 0) {
+                    ++count;
+                    byte.push((dot8[0] ? 128 : 0) + (dot8[1] ? 64 : 0) + (dot8[2] ? 32 : 0) + (dot8[3] ? 16 : 0) + (dot8[4] ? 8 : 0) + (dot8[5] ? 4 : 0) + (dot8[6] ? 2 : 0) + (dot8[7] ? 1 : 0));
+                }
+                while (count % 4 !== 0) {
+                    ++count;
+                    byte.push(0);
+                }
+            }
+            for (let y = 0; y < frame; ++y) {
+                const length = this.width + frame * 2;
+                let count = 0;
+                let x;
+                for (x = 0; x < length; x += 8) {
+                    ++count;
+                    byte.push(255);
+                }
+                if (length % 8 !== 0) {
+                    ++count;
+                    x = length % 8;
+                    const dot8 = [false, false, false, false, false, false, false, false];
+                    for (let i = 0; i < 8; ++i) {
+                        dot8[i] = i < x;
+                    }
+                    byte.push((dot8[0] ? 128 : 0) + (dot8[1] ? 64 : 0) + (dot8[2] ? 32 : 0) + (dot8[3] ? 16 : 0) + (dot8[4] ? 8 : 0) + (dot8[5] ? 4 : 0) + (dot8[6] ? 2 : 0) + (dot8[7] ? 1 : 0));
+                }
+                while (count % 4 !== 0) {
+                    ++count;
+                    byte.push(0);
+                }
+            }
+            const filesize = this.numberToLE4Byte(byte.length);
+            byte[2] = filesize[0];
+            byte[3] = filesize[1];
+            byte[4] = filesize[2];
+            byte[5] = filesize[3];
+            const datasize = this.numberToLE4Byte(byte.length - 54);
+            byte[42] = datasize[0];
+            byte[43] = datasize[1];
+            byte[44] = datasize[2];
+            byte[45] = datasize[3];
+            return byte;
+        }
+        numberToLE4Byte(data) {
+            const byte = [0, 0, 0, 0];
+            for (let i = 0; i < 4; ++i) {
+                byte[i] = data % 256;
+                data = Math.floor(data / 256);
+            }
+            return byte;
+        }
+    }
+    QRLite.BitCanvas = BitCanvas;
+    class Generator {
+        constructor() {
+            this.level = 'Q';
+            this.version = 0;
+        }
+        get() { return this.canvas; }
+        getLevel() { return this.level; }
+        setLevel(level) {
+            if (level !== 'L' && level !== 'M' && level !== 'Q' && level !== 'H') {
+                level = 'Q';
+            }
+            this.level = level;
+            return this.level;
+        }
+        getVersion() { return this.version; }
+        setData(data) {
+            this.rawdata = this.convertStringByte(data);
+            this.version = this.searchVersion(data.length, this.level);
+            if (this.version <= 0) {
+                return null;
+            }
+            const w = 17 + this.version * 4;
+            const h = w;
+            this.canvas = new BitCanvas(w, h);
+            this.canvas.drawQRInfo();
+            this.canvas.drawTimingPattern();
+            this.canvas.drawFinderPattern(-1, -1);
+            this.canvas.drawFinderPattern(w - 8, -1);
+            this.canvas.drawFinderPattern(-1, h - 8);
+            if (QRLite.INFO.Data[this.version].Alignment) {
+                QRLite.INFO.Data[this.version].Alignment.forEach((pos) => {
+                    this.canvas.drawAlignmentPattern(pos.x, pos.y);
+                });
+            }
+            this.mask = this.convertMask(this.canvas);
+            return this.rawdata;
+        }
+        createDataCode() {
+            const blocks = this.createDataBlock(this.level, this.version, this.rawdata);
+            const ecblocks = this.createECBlock(this.level, this.version, blocks);
+            const datacode = [];
+            datacode.push(this.interleaveArrays(blocks));
+            datacode.push(this.interleaveArrays(ecblocks));
+            return datacode;
+        }
+        drawData(data, ec) {
+            const cursor = this.canvas.drawQRByte(data);
+            this.canvas.drawQRByte(ec, cursor);
+            this.canvas.fillEmptyWhite();
+        }
+        createMaskedQRCode() {
+            const masked = [];
+            for (let masknum = 0; masknum < 8; ++masknum) {
+                masked.push(this.canvas.clone().reverse(QRLite.INFO.Mask[masknum], this.mask));
+            }
+            masked.forEach((qrcode, masknum) => {
+                qrcode.drawQRInfo(this.level, masknum);
+            });
+            return masked;
+        }
+        selectQRCode(qrcodes) {
+            let masknum = 0;
+            let minpoint = this.rating(qrcodes[masknum]);
+            for (let i = 1; i < qrcodes.length; ++i) {
+                const point = this.rating(qrcodes[i]);
+                if (point < minpoint) {
+                    masknum = i;
+                    minpoint = point;
+                }
+            }
+            return masknum;
+        }
+        convert(datastr, level) {
+            const newlevel = this.setLevel(level || this.level);
+            this.setData(datastr);
+            const datacode = this.createDataCode();
+            this.drawData(datacode[0], datacode[1]);
+            const masked = this.createMaskedQRCode();
+            const masknum = this.selectQRCode(masked);
+            return masked[masknum];
+        }
+        createDataBlock(level, version, data) {
+            const byte = new Byte(QRLite.INFO.Data[version][level].DataCode);
+            byte.addBit(0, 1, 0, 0);
+            byte.addBit(...this.calcLengthBitarray(data.length, version, level));
+            byte.addByte(data);
+            byte.addBit(0, 0, 0, 0);
+            byte.add0Bit();
+            for (let i = byte.writeByteSize(); i < byte.size(); ++i) {
+                byte.addByteNumber(236);
+                if (byte.size() <= ++i) {
+                    break;
+                }
+                byte.addByteNumber(17);
+            }
+            return this.spritDataBlock(byte.get(), QRLite.INFO.Data[version][level].RS);
+        }
+        createECBlock(level, version, blocks) {
+            const countEC = this.countErrorCode(version, level);
+            const g = QRLite.INFO.G[countEC];
+            return blocks.map((block) => {
+                let f = [];
+                const ecblock = new Uint8Array(countEC);
+                let count = ecblock.length + block.length;
+                block.forEach((num, i) => {
+                    f.push({ k: num, x: --count });
+                });
+                while (0 < count) {
+                    f.push({ k: 0, x: --count });
+                }
+                for (let i = 0; i < block.length; ++i) {
+                    const k = QRLite.INFO.ItoE[f[i].k];
+                    const px = f[i].x - g[0].x;
+                    const gax = g.map((v, index) => {
+                        const e = (k + v.a) % 255;
+                        return { k: QRLite.INFO.ItoE.indexOf(e), x: v.x + px };
+                    });
+                    f = f.map((v, index) => {
+                        if (index < i) {
+                            return { k: 0, x: v.x };
+                        }
+                        return { k: (gax[index - i] ? v.k ^ gax[index - i].k : 0), x: v.x };
+                    });
+                }
+                for (let i = 0; i < ecblock.length; ++i) {
+                    ecblock[i] = f[i + block.length].k;
+                }
+                return ecblock;
+            });
+        }
+        convertStringByte(data) {
+            return (new Uint8Array(data.split('').map((c) => {
+                return c.charCodeAt(0);
+            })));
+        }
+        searchVersion(datasize, level) {
+            const versions = Object.keys(QRLite.INFO.Data);
+            for (let i = 0; i < versions.length; ++i) {
+                if (datasize < QRLite.INFO.Data[parseInt(versions[i])][level].Size) {
+                    return parseInt(versions[i]);
+                }
+            }
+            return 0;
+        }
+        calcLengthBitarray(datasize, version, level) {
+            const bitlen = 8;
+            const byte = [];
+            for (let i = bitlen - 1; 0 <= i; --i) {
+                byte[i] = datasize % 2;
+                datasize = Math.floor(datasize / 2);
+            }
+            return byte;
+        }
+        spritDataBlock(byte, rsblocks) {
+            const blocks = [];
+            let begin = 0;
+            rsblocks.forEach((info) => {
+                for (let i = 0; i < info.count; ++i) {
+                    blocks.push(byte.slice(begin, begin + info.block[1]));
+                    begin += info.block[1];
+                }
+            });
+            return blocks;
+        }
+        countErrorCode(version, level) {
+            const code = QRLite.INFO.Data[version][level].ECCode;
+            let count = 0;
+            QRLite.INFO.Data[version][level].RS.forEach((block) => {
+                count += block.count;
+            });
+            return Math.floor(code / count);
+        }
+        interleaveArrays(list) {
+            const size = list.map((v) => { return v.length; }).reduce((prev, current) => { return prev + current; });
+            const byte = new Uint8Array(size);
+            const length = list[list.length - 1].length;
+            let count = 0;
+            for (let i = 0; i < length; ++i) {
+                for (let a = 0; a < list.length; ++a) {
+                    if (list[a].length <= i) {
+                        continue;
+                    }
+                    byte[count++] = list[a][i];
+                }
+            }
+            return byte;
+        }
+        convertMask(canvas) {
+            const _mask = canvas.getPixels();
+            const mask = [];
+            for (let i = 0; i < _mask.length; ++i) {
+                mask.push(_mask[i] === undefined);
+            }
+            return mask;
+        }
+        rating(canvas) {
+            const bitarray = canvas.getPixels();
+            let point = 0;
+            this.sameBitarrayLines(bitarray, canvas.width, canvas.height).forEach((length) => {
+                point += 3 + length - 5;
+            });
+            point += this.count2x2Blocks(bitarray, canvas.width, canvas.height) * 3;
+            if (this.existsBadPattern(bitarray, canvas.width, canvas.height)) {
+                point += 40;
+            }
+            const black = this.countBitarray(bitarray, false);
+            const per = Math.floor(black * 100 / bitarray.length);
+            let k = Math.abs(per - 50);
+            while (5 <= k) {
+                point += 10;
+                k -= 5;
+            }
+            return point;
+        }
+        sameBitarrayLines(bitarray, width, height) {
+            const lines = [];
+            for (let y = 0; y < height; ++y) {
+                let color = bitarray[y * width];
+                let count = 1;
+                for (let x = 1; x < width; ++x) {
+                    if (bitarray[y * width + x] === color) {
+                        ++count;
+                        continue;
+                    }
+                    if (5 <= count) {
+                        lines.push(count);
+                    }
+                    color = bitarray[y * width + x];
+                    count = 1;
+                }
+            }
+            for (let x = 0; x < width; ++x) {
+                let color = bitarray[x];
+                let count = 1;
+                for (let y = 1; y < height; ++y) {
+                    if (bitarray[y * width + x] === color) {
+                        ++count;
+                        continue;
+                    }
+                    if (5 <= count) {
+                        lines.push(count);
+                    }
+                    color = bitarray[y * width + x];
+                    count = 1;
+                }
+            }
+            return lines;
+        }
+        count2x2Blocks(bitarray, width, height) {
+            let count = 0;
+            for (let y = 1; y < height; ++y) {
+                for (let x = 1; x < width; ++x) {
+                    if (bitarray[y * width + x - 1] === bitarray[y * width + x] &&
+                        bitarray[(y - 1) * width + x] === bitarray[y * width + x] &&
+                        bitarray[(y - 1) * width + x - 1] === bitarray[y * width + x]) {
+                        ++count;
+                    }
+                }
+            }
+            return count;
+        }
+        existsBadPattern(bitarray, width, height) {
+            const bad = [false, true, false, false, false, true, false];
+            for (let y = 0; y < height; ++y) {
+                let s = 0;
+                for (let x = 0; x < width; ++x) {
+                    if (bitarray[y * width + x] === bad[s]) {
+                        ++s;
+                        if (bad.length <= s) {
+                            if (9 < x && bitarray[y * width + x - 7] && bitarray[y * width + x - 6] && bitarray[y * width + x - 5] && bitarray[y * width + x - 4]) {
+                                return true;
+                            }
+                            if (x + 4 < width && bitarray[y * width + x + 1] && bitarray[y * width + x + 2] && bitarray[y * width + x + 3] && bitarray[y * width + x + 4]) {
+                                return true;
+                            }
+                        }
+                    }
+                    else {
+                        s = (bitarray[y * width + x] === bad[s]) ? 1 : 0;
+                    }
+                }
+            }
+            for (let x = 0; x < width; ++x) {
+                let s = 0;
+                for (let y = 0; y < height; ++y) {
+                    if (bitarray[y * width + x] === bad[s]) {
+                        ++s;
+                        if (bad.length <= s) {
+                            if (9 < y && bitarray[(y - 7) * width + x] && bitarray[(y - 6) * width + x] && bitarray[(y - 5) * width + x] && bitarray[(y - 4) * width + x]) {
+                                return true;
+                            }
+                            if (y + 4 < width && bitarray[(y + 1) * width + x] && bitarray[(y + 2) * width + x] && bitarray[(y + 3) * width + x] && bitarray[(y + 4) * width + x]) {
+                                return true;
+                            }
+                        }
+                    }
+                    else {
+                        s = (bitarray[y * width + x] === bad[s]) ? 1 : 0;
+                    }
+                }
+            }
+            return false;
+        }
+        countBitarray(bitarray, target) {
+            let count = 0;
+            for (let i = 0; i < bitarray.length; ++i) {
+                if (bitarray[i] === target) {
+                    ++count;
+                }
+            }
+            return count;
+        }
+    }
+    QRLite.Generator = Generator;
+    function convert(data, level = 'Q') {
+        const qr = new Generator();
+        return qr.convert(data, level);
+    }
+    QRLite.convert = convert;
+    QRLite.INFO = {
         Level: { L: 0, M: 1, Q: 2, H: 2 },
         Data: {
             1: {
@@ -842,843 +1682,5 @@ var QRLite;
             7: (i, j) => { return ((i * j) % 3 + (i + j) % 2) % 2 === 0; },
         },
     };
-    class Byte {
-        constructor(bytesize) {
-            this.byte = new Uint8Array(bytesize);
-            this.wbit = 0;
-        }
-        size() { return this.byte.length; }
-        writeByteSize() { return Math.ceil(this.wbit / 8); }
-        get() { return this.byte; }
-        addBit(...bitarray) {
-            bitarray.forEach((bit) => {
-                if (bit) {
-                    this.byte[Math.floor(this.wbit / 8)] |= 1 << (7 - this.wbit % 8);
-                }
-                ++this.wbit;
-            });
-        }
-        add0Bit(count) {
-            if (count === undefined) {
-                count = this.wbit % 8;
-            }
-            this.wbit += count;
-        }
-        addByte(data) {
-            if (this.wbit % 8 === 0) {
-                data.forEach((byte) => {
-                    this.byte[Math.floor(this.wbit / 8)] = byte;
-                    this.wbit += 8;
-                });
-                return;
-            }
-            data.forEach((byte) => {
-                this.addBit(byte & 0x80, byte & 0x40, byte & 0x20, byte & 0x10, byte & 0x8, byte & 0x4, byte & 0x2, byte & 0x1);
-            });
-        }
-        addByteNumber(byte) {
-            if (this.wbit % 8 === 0) {
-                this.byte[Math.floor(this.wbit / 8)] = byte;
-                this.wbit += 8;
-                return;
-            }
-            this.addBit(byte & 0x80, byte & 0x40, byte & 0x20, byte & 0x10, byte & 0x8, byte & 0x4, byte & 0x2, byte & 0x1);
-        }
-    }
-    class BitReader {
-        constructor(byte) {
-            this.byte = byte;
-            this.cursor = 0;
-        }
-        hasNext() { return this.cursor < this.byte.length * 8; }
-        getNow() {
-            const b = this.byte[Math.floor(this.cursor / 8)];
-            return !!(b & (1 << (7 - (this.cursor % 8))));
-        }
-        getNext() {
-            const b = this.byte[Math.floor(this.cursor / 8)];
-            return !!(b & (1 << (7 - (this.cursor++ % 8))));
-        }
-    }
-    class BitCanvas {
-        constructor(w, h) {
-            this.width = w;
-            this.height = h;
-            this.bitarray = new Array(w * h);
-        }
-        clone() {
-            const canvas = new BitCanvas(this.width, this.height);
-            canvas.drawFromBitarray(this.bitarray);
-            return canvas;
-        }
-        reverse(func, mask) {
-            for (let i = 0; i < this.bitarray.length; ++i) {
-                if (!mask[i] || !func(i % this.width, Math.floor(i / this.width))) {
-                    continue;
-                }
-                this.bitarray[i] = !this.bitarray[i];
-            }
-            return this;
-        }
-        getPixel(x, y) {
-            if (x < 0 || this.width <= x || y < 0 || this.height <= y) {
-                return undefined;
-            }
-            return this.bitarray[y * this.width + x];
-        }
-        getPixels() { return this.bitarray; }
-        drawPixel(x, y, white) {
-            if (x < 0 || this.width <= x || y < 0 || this.height <= y) {
-                return;
-            }
-            this.bitarray[y * this.width + x] = !!white;
-            return this;
-        }
-        drawFromBitarray(bitarray) {
-            for (let i = 0; i < bitarray.length && i < this.bitarray.length; ++i) {
-                this.bitarray[i] = bitarray[i];
-            }
-            return this;
-        }
-        isTransparentPixel(x, y) {
-            if (x < 0 || this.width <= x || y < 0 || this.height <= y) {
-                return false;
-            }
-            return this.bitarray[y * this.width + x] === undefined;
-        }
-        drawTimingPattern() {
-            for (let x = 0; x < this.width; ++x) {
-                this.drawPixel(x, 6, !!(x % 2));
-            }
-            for (let y = 0; y < this.height; ++y) {
-                this.drawPixel(6, y, !!(y % 2));
-            }
-            return this;
-        }
-        drawQRInfo(level, mask) {
-            const data = [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true];
-            switch (level) {
-                case 'L':
-                    data[0] = false;
-                    data[1] = true;
-                    break;
-                case 'M':
-                    data[0] = false;
-                    data[1] = false;
-                    break;
-                case 'Q':
-                    data[0] = true;
-                    data[1] = true;
-                    break;
-                case 'H':
-                    data[0] = true;
-                    data[1] = false;
-                    break;
-            }
-            switch (mask) {
-                case 0:
-                    data[2] = false;
-                    data[3] = false;
-                    data[4] = false;
-                    break;
-                case 1:
-                    data[2] = false;
-                    data[3] = false;
-                    data[4] = true;
-                    break;
-                case 2:
-                    data[2] = false;
-                    data[3] = true;
-                    data[4] = false;
-                    break;
-                case 3:
-                    data[2] = false;
-                    data[3] = true;
-                    data[4] = true;
-                    break;
-                case 4:
-                    data[2] = true;
-                    data[3] = false;
-                    data[4] = false;
-                    break;
-                case 5:
-                    data[2] = true;
-                    data[3] = false;
-                    data[4] = true;
-                    break;
-                case 6:
-                    data[2] = true;
-                    data[3] = true;
-                    data[4] = false;
-                    break;
-                case 7:
-                    data[2] = true;
-                    data[3] = true;
-                    data[4] = true;
-                    break;
-            }
-            if (level !== undefined && mask !== undefined) {
-                const k = [
-                    data[0], data[1], data[2], data[3], data[4],
-                    false, false, false, false, false, false, false, false, false, false,
-                ];
-                let a = 0;
-                if (data[0]) {
-                    a = 4;
-                }
-                else if (data[1]) {
-                    a = 3;
-                }
-                else if (data[2]) {
-                    a = 2;
-                }
-                else if (data[3]) {
-                    a = 1;
-                }
-                else if (data[4]) {
-                    a = 0;
-                }
-                const g = [true, false, true, false, false, true, true, false, true, true, true];
-                for (let i = 0; i < 5; ++i) {
-                    if (!k[i]) {
-                        continue;
-                    }
-                    for (let j = 0; j < g.length; ++j) {
-                        k[i + j] = k[i + j] !== g[j];
-                    }
-                }
-                for (let i = 5; i < data.length; ++i) {
-                    data[i] = k[i];
-                }
-                data[0] = data[0] === true;
-                data[1] = data[1] === false;
-                data[2] = data[2] === true;
-                data[3] = data[3] === false;
-                data[4] = data[4] === true;
-                data[5] = data[5] === false;
-                data[6] = data[6] === false;
-                data[7] = data[7] === false;
-                data[8] = data[8] === false;
-                data[9] = data[9] === false;
-                data[10] = data[10] === true;
-                data[11] = data[11] === false;
-                data[12] = data[12] === false;
-                data[13] = data[13] === true;
-                data[14] = data[14] === false;
-            }
-            this.drawPixel(8, 0, data[14]);
-            this.drawPixel(8, 1, data[13]);
-            this.drawPixel(8, 2, data[12]);
-            this.drawPixel(8, 3, data[11]);
-            this.drawPixel(8, 4, data[10]);
-            this.drawPixel(8, 5, data[9]);
-            this.drawPixel(8, 7, data[8]);
-            this.drawPixel(8, 8, data[7]);
-            this.drawPixel(7, 8, data[6]);
-            this.drawPixel(5, 8, data[5]);
-            this.drawPixel(4, 8, data[4]);
-            this.drawPixel(3, 8, data[3]);
-            this.drawPixel(2, 8, data[2]);
-            this.drawPixel(1, 8, data[1]);
-            this.drawPixel(0, 8, data[0]);
-            this.drawPixel(this.width - 8, 8, data[7]);
-            this.drawPixel(this.width - 7, 8, data[8]);
-            this.drawPixel(this.width - 6, 8, data[9]);
-            this.drawPixel(this.width - 5, 8, data[10]);
-            this.drawPixel(this.width - 4, 8, data[11]);
-            this.drawPixel(this.width - 3, 8, data[12]);
-            this.drawPixel(this.width - 2, 8, data[13]);
-            this.drawPixel(this.width - 1, 8, data[14]);
-            this.drawPixel(8, this.height - 8, true);
-            this.drawPixel(8, this.height - 7, data[6]);
-            this.drawPixel(8, this.height - 6, data[5]);
-            this.drawPixel(8, this.height - 5, data[4]);
-            this.drawPixel(8, this.height - 4, data[3]);
-            this.drawPixel(8, this.height - 3, data[2]);
-            this.drawPixel(8, this.height - 2, data[1]);
-            this.drawPixel(8, this.height - 1, data[0]);
-            return this;
-        }
-        drawFinderPattern(x, y) {
-            const pattern = [
-                1, 1, 1, 1, 1, 1, 1, 1, 1,
-                1, 0, 0, 0, 0, 0, 0, 0, 1,
-                1, 0, 1, 1, 1, 1, 1, 0, 1,
-                1, 0, 1, 0, 0, 0, 1, 0, 1,
-                1, 0, 1, 0, 0, 0, 1, 0, 1,
-                1, 0, 1, 0, 0, 0, 1, 0, 1,
-                1, 0, 1, 1, 1, 1, 1, 0, 1,
-                1, 0, 0, 0, 0, 0, 0, 0, 1,
-                1, 1, 1, 1, 1, 1, 1, 1, 1,
-            ];
-            this.drawPattern(pattern, x, y, 9, 9);
-            return this;
-        }
-        drawAlignmentPattern(x, y) {
-            const pattern = [
-                0, 0, 0, 0, 0,
-                0, 1, 1, 1, 0,
-                0, 1, 0, 1, 0,
-                0, 1, 1, 1, 0,
-                0, 0, 0, 0, 0,
-            ];
-            this.drawPattern(pattern, x, y, 5, 5);
-            return this;
-        }
-        drawPattern(pattern, x, y, w, h) {
-            for (let b = 0; b < h; ++b) {
-                for (let a = 0; a < w; ++a) {
-                    this.drawPixel(x + a, y + b, !!pattern[b * w + a]);
-                }
-            }
-            this.drawPixel(8, this.height - 8, false);
-            return this;
-        }
-        drawQRByte(byte, cursor) {
-            if (!cursor) {
-                cursor = { x: this.width - 1, y: this.height - 1, up: true, right: true };
-            }
-            const reader = new BitReader(byte);
-            while (reader.hasNext()) {
-                this.drawPixel(cursor.x - (cursor.right ? 0 : 1), cursor.y, !reader.getNext());
-                if (cursor.right) {
-                    if (this.isTransparentPixel(cursor.x - 1, cursor.y)) {
-                        cursor.right = false;
-                        continue;
-                    }
-                    let nexty = this.existsEmpty(cursor.x, cursor.y, cursor.up);
-                    while (nexty < 0) {
-                        if (this.noEmptyLine(cursor.x - 2)) {
-                            --cursor.x;
-                        }
-                        cursor.right = true;
-                        cursor.up = !cursor.up;
-                        cursor.y = cursor.up ? this.height - 1 : 0;
-                        cursor.x -= 2;
-                        if (cursor.x < 0) {
-                            break;
-                        }
-                        nexty = this.existsEmpty(cursor.x, cursor.y, cursor.up);
-                    }
-                    if (cursor.x < 0) {
-                        break;
-                    }
-                    cursor.y = nexty;
-                }
-                else {
-                    cursor.right = true;
-                    let nexty = this.existsEmpty(cursor.x, cursor.y, cursor.up);
-                    while (nexty < 0) {
-                        if (this.noEmptyLine(cursor.x - 2)) {
-                            --cursor.x;
-                        }
-                        cursor.right = true;
-                        cursor.up = !cursor.up;
-                        cursor.y = cursor.up ? this.height - 1 : 0;
-                        cursor.x -= 2;
-                        if (cursor.x < 0) {
-                            break;
-                        }
-                        nexty = this.existsEmpty(cursor.x, cursor.y, cursor.up);
-                    }
-                    if (cursor.x < 0) {
-                        break;
-                    }
-                    cursor.y = nexty;
-                    if (this.isTransparentPixel(cursor.x, cursor.y)) {
-                        continue;
-                    }
-                    cursor.right = false;
-                }
-            }
-            if (reader.hasNext()) {
-                console.log('Error: Data overflow!');
-            }
-            return cursor;
-        }
-        fillEmptyWhite() {
-            const length = this.width * this.height;
-            let count = 0;
-            for (let i = 0; i < length; ++i) {
-                if (this.bitarray[i] === undefined) {
-                    this.bitarray[i] = true;
-                    ++count;
-                }
-            }
-            return count;
-        }
-        existsEmpty(rx, y, up) {
-            if (up) {
-                for (; 0 <= y; --y) {
-                    if (this.isTransparentPixel(rx, y) || this.isTransparentPixel(rx - 1, y)) {
-                        return y;
-                    }
-                }
-                return -1;
-            }
-            for (; y < this.height; ++y) {
-                if (this.isTransparentPixel(rx, y) || this.isTransparentPixel(rx - 1, y)) {
-                    return y;
-                }
-            }
-            return -1;
-        }
-        noEmptyLine(x) {
-            for (let y = 0; y < this.height; ++y) {
-                if (this.isTransparentPixel(x, y)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-        print(white = '██', black = '  ', none = '--') {
-            for (let y = 0; y < this.height; ++y) {
-                const line = [];
-                for (let x = 0; x < this.width; ++x) {
-                    line.push(this.bitarray[y * this.height + x] === undefined ? none : (this.bitarray[y * this.height + x] ? white : black));
-                }
-                console.log(line.join(''));
-            }
-        }
-        outputBitmapByte(frame = 1) {
-            const byte = [];
-            if (frame <= 0) {
-                frame = 0;
-            }
-            byte.push(0x42, 0x4D);
-            byte.push(0, 0, 0, 0);
-            byte.push(0, 0, 0, 0);
-            byte.push(0, 0, 0, 0);
-            byte.push(...this.numberToLE4Byte(40));
-            byte.push(...this.numberToLE4Byte(this.width + frame * 2));
-            byte.push(...this.numberToLE4Byte(this.height + frame * 2));
-            byte.push(1, 0);
-            byte.push(1, 0);
-            byte.push(0, 0, 0, 0);
-            byte.push(0, 0, 0, 0);
-            byte.push(0, 0, 0, 0);
-            byte.push(0, 0, 0, 0);
-            byte.push(0, 0, 0, 0);
-            byte.push(0, 0, 0, 0);
-            byte.push(0, 0, 0, 0);
-            byte.push(255, 255, 255, 0);
-            const offset = this.numberToLE4Byte(byte.length);
-            byte[10] = offset[0];
-            byte[11] = offset[1];
-            byte[12] = offset[2];
-            byte[13] = offset[3];
-            for (let y = 0; y < frame; ++y) {
-                const length = this.width + frame * 2;
-                let count = 0;
-                let x;
-                for (x = 0; x < length; x += 8) {
-                    ++count;
-                    byte.push(255);
-                }
-                if (length % 8 !== 0) {
-                    ++count;
-                    x = length % 8;
-                    const dot8 = [false, false, false, false, false, false, false, false];
-                    for (let i = 0; i < 8; ++i) {
-                        dot8[i] = i < x;
-                    }
-                    byte.push((dot8[0] ? 128 : 0) + (dot8[1] ? 64 : 0) + (dot8[2] ? 32 : 0) + (dot8[3] ? 16 : 0) + (dot8[4] ? 8 : 0) + (dot8[5] ? 4 : 0) + (dot8[6] ? 2 : 0) + (dot8[7] ? 1 : 0));
-                }
-                while (count % 4 !== 0) {
-                    ++count;
-                    byte.push(0);
-                }
-            }
-            for (let y = this.height - 1; 0 <= y; --y) {
-                const dot8 = [false, false, false, false, false, false, false, false];
-                let x;
-                let count = 0;
-                let w = 0;
-                for (x = -frame; x < this.width + frame; ++x) {
-                    if (x < 0 || this.width <= x) {
-                        dot8[w] = true;
-                    }
-                    else {
-                        dot8[w] = this.bitarray[y * this.width + x];
-                    }
-                    if (++w === 8) {
-                        ++count;
-                        byte.push((dot8[0] ? 128 : 0) + (dot8[1] ? 64 : 0) + (dot8[2] ? 32 : 0) + (dot8[3] ? 16 : 0) + (dot8[4] ? 8 : 0) + (dot8[5] ? 4 : 0) + (dot8[6] ? 2 : 0) + (dot8[7] ? 1 : 0));
-                        dot8[0] = dot8[1] = dot8[2] = dot8[3] = dot8[4] = dot8[5] = dot8[6] = dot8[7] = false;
-                        w = 0;
-                    }
-                }
-                if (w % 8 !== 0) {
-                    ++count;
-                    byte.push((dot8[0] ? 128 : 0) + (dot8[1] ? 64 : 0) + (dot8[2] ? 32 : 0) + (dot8[3] ? 16 : 0) + (dot8[4] ? 8 : 0) + (dot8[5] ? 4 : 0) + (dot8[6] ? 2 : 0) + (dot8[7] ? 1 : 0));
-                }
-                while (count % 4 !== 0) {
-                    ++count;
-                    byte.push(0);
-                }
-            }
-            for (let y = 0; y < frame; ++y) {
-                const length = this.width + frame * 2;
-                let count = 0;
-                let x;
-                for (x = 0; x < length; x += 8) {
-                    ++count;
-                    byte.push(255);
-                }
-                if (length % 8 !== 0) {
-                    ++count;
-                    x = length % 8;
-                    const dot8 = [false, false, false, false, false, false, false, false];
-                    for (let i = 0; i < 8; ++i) {
-                        dot8[i] = i < x;
-                    }
-                    byte.push((dot8[0] ? 128 : 0) + (dot8[1] ? 64 : 0) + (dot8[2] ? 32 : 0) + (dot8[3] ? 16 : 0) + (dot8[4] ? 8 : 0) + (dot8[5] ? 4 : 0) + (dot8[6] ? 2 : 0) + (dot8[7] ? 1 : 0));
-                }
-                while (count % 4 !== 0) {
-                    ++count;
-                    byte.push(0);
-                }
-            }
-            const filesize = this.numberToLE4Byte(byte.length);
-            byte[2] = filesize[0];
-            byte[3] = filesize[1];
-            byte[4] = filesize[2];
-            byte[5] = filesize[3];
-            const datasize = this.numberToLE4Byte(byte.length - 54);
-            byte[42] = datasize[0];
-            byte[43] = datasize[1];
-            byte[44] = datasize[2];
-            byte[45] = datasize[3];
-            return byte;
-        }
-        numberToLE4Byte(data) {
-            const byte = [0, 0, 0, 0];
-            for (let i = 0; i < 4; ++i) {
-                byte[i] = data % 256;
-                data = Math.floor(data / 256);
-            }
-            return byte;
-        }
-    }
-    QRLite.BitCanvas = BitCanvas;
-    class Generator {
-        constructor() {
-            this.level = 'Q';
-            this.version = 0;
-        }
-        get() { return this.canvas; }
-        getLevel() { return this.level; }
-        setLevel(level) {
-            if (level !== 'L' && level !== 'M' && level !== 'Q' && level !== 'H') {
-                level = 'Q';
-            }
-            this.level = level;
-            return this.level;
-        }
-        getVersion() { return this.version; }
-        setData(data) {
-            this.rawdata = this.convertStringByte(data);
-            this.version = this.searchVersion(data.length, this.level);
-            if (this.version <= 0) {
-                return null;
-            }
-            const w = 17 + this.version * 4;
-            const h = w;
-            this.canvas = new BitCanvas(w, h);
-            this.canvas.drawQRInfo();
-            this.canvas.drawTimingPattern();
-            this.canvas.drawFinderPattern(-1, -1);
-            this.canvas.drawFinderPattern(w - 8, -1);
-            this.canvas.drawFinderPattern(-1, h - 8);
-            if (QRLite.QR.Data[this.version].Alignment) {
-                QRLite.QR.Data[this.version].Alignment.forEach((pos) => {
-                    this.canvas.drawAlignmentPattern(pos.x, pos.y);
-                });
-            }
-            this.mask = this.convertMask(this.canvas);
-            return this.rawdata;
-        }
-        createDataCode() {
-            const blocks = this.createDataBlock(this.level, this.version, this.rawdata);
-            const ecblocks = this.createECBlock(this.level, this.version, blocks);
-            const datacode = [];
-            datacode.push(this.interleaveArrays(blocks));
-            datacode.push(this.interleaveArrays(ecblocks));
-            return datacode;
-        }
-        drawData(data, ec) {
-            const cursor = this.canvas.drawQRByte(data);
-            this.canvas.drawQRByte(ec, cursor);
-            this.canvas.fillEmptyWhite();
-        }
-        createMaskedQRCode() {
-            const masked = [];
-            for (let masknum = 0; masknum < 8; ++masknum) {
-                masked.push(this.canvas.clone().reverse(QRLite.QR.Mask[masknum], this.mask));
-            }
-            masked.forEach((qrcode, masknum) => {
-                qrcode.drawQRInfo(this.level, masknum);
-            });
-            return masked;
-        }
-        selectQRCode(qrcodes) {
-            let masknum = 0;
-            let minpoint = this.rating(qrcodes[masknum]);
-            for (let i = 1; i < qrcodes.length; ++i) {
-                const point = this.rating(qrcodes[i]);
-                if (point < minpoint) {
-                    masknum = i;
-                    minpoint = point;
-                }
-            }
-            return masknum;
-        }
-        convert(datastr, level) {
-            const newlevel = this.setLevel(level || this.level);
-            this.setData(datastr);
-            const datacode = this.createDataCode();
-            this.drawData(datacode[0], datacode[1]);
-            const masked = this.createMaskedQRCode();
-            const masknum = this.selectQRCode(masked);
-            return masked[masknum];
-        }
-        createDataBlock(level, version, data) {
-            const byte = new Byte(QRLite.QR.Data[version][level].DataCode);
-            byte.addBit(0, 1, 0, 0);
-            byte.addBit(...this.calcLengthBitarray(data.length, version, level));
-            byte.addByte(data);
-            byte.addBit(0, 0, 0, 0);
-            byte.add0Bit();
-            for (let i = byte.writeByteSize(); i < byte.size(); ++i) {
-                byte.addByteNumber(236);
-                if (byte.size() <= ++i) {
-                    break;
-                }
-                byte.addByteNumber(17);
-            }
-            return this.spritDataBlock(byte.get(), QRLite.QR.Data[version][level].RS);
-        }
-        createECBlock(level, version, blocks) {
-            const countEC = this.countErrorCode(version, level);
-            const g = QRLite.QR.G[countEC];
-            return blocks.map((block) => {
-                let f = [];
-                const ecblock = new Uint8Array(countEC);
-                let count = ecblock.length + block.length;
-                block.forEach((num, i) => {
-                    f.push({ k: num, x: --count });
-                });
-                while (0 < count) {
-                    f.push({ k: 0, x: --count });
-                }
-                for (let i = 0; i < block.length; ++i) {
-                    const k = QRLite.QR.ItoE[f[i].k];
-                    const px = f[i].x - g[0].x;
-                    const gax = g.map((v, index) => {
-                        const e = (k + v.a) % 255;
-                        return { k: QRLite.QR.ItoE.indexOf(e), x: v.x + px };
-                    });
-                    f = f.map((v, index) => {
-                        if (index < i) {
-                            return { k: 0, x: v.x };
-                        }
-                        return { k: (gax[index - i] ? v.k ^ gax[index - i].k : 0), x: v.x };
-                    });
-                }
-                for (let i = 0; i < ecblock.length; ++i) {
-                    ecblock[i] = f[i + block.length].k;
-                }
-                return ecblock;
-            });
-        }
-        convertStringByte(data) {
-            return (new Uint8Array(data.split('').map((c) => {
-                return c.charCodeAt(0);
-            })));
-        }
-        searchVersion(datasize, level) {
-            const versions = Object.keys(QRLite.QR.Data);
-            for (let i = 0; i < versions.length; ++i) {
-                if (datasize < QRLite.QR.Data[parseInt(versions[i])][level].Size) {
-                    return parseInt(versions[i]);
-                }
-            }
-            return 0;
-        }
-        calcLengthBitarray(datasize, version, level) {
-            const bitlen = 8;
-            const byte = [];
-            for (let i = bitlen - 1; 0 <= i; --i) {
-                byte[i] = datasize % 2;
-                datasize = Math.floor(datasize / 2);
-            }
-            return byte;
-        }
-        spritDataBlock(byte, rsblocks) {
-            const blocks = [];
-            let begin = 0;
-            rsblocks.forEach((info) => {
-                for (let i = 0; i < info.count; ++i) {
-                    blocks.push(byte.slice(begin, begin + info.block[1]));
-                    begin += info.block[1];
-                }
-            });
-            return blocks;
-        }
-        countErrorCode(version, level) {
-            const code = QRLite.QR.Data[version][level].ECCode;
-            let count = 0;
-            QRLite.QR.Data[version][level].RS.forEach((block) => {
-                count += block.count;
-            });
-            return Math.floor(code / count);
-        }
-        interleaveArrays(list) {
-            const size = list.map((v) => { return v.length; }).reduce((prev, current) => { return prev + current; });
-            const byte = new Uint8Array(size);
-            const length = list[list.length - 1].length;
-            let count = 0;
-            for (let i = 0; i < length; ++i) {
-                for (let a = 0; a < list.length; ++a) {
-                    if (list[a].length <= i) {
-                        continue;
-                    }
-                    byte[count++] = list[a][i];
-                }
-            }
-            return byte;
-        }
-        convertMask(canvas) {
-            const _mask = canvas.getPixels();
-            const mask = [];
-            for (let i = 0; i < _mask.length; ++i) {
-                mask.push(_mask[i] === undefined);
-            }
-            return mask;
-        }
-        rating(canvas) {
-            const bitarray = canvas.getPixels();
-            let point = 0;
-            this.sameBitarrayLines(bitarray, canvas.width, canvas.height).forEach((length) => {
-                point += 3 + length - 5;
-            });
-            point += this.count2x2Blocks(bitarray, canvas.width, canvas.height) * 3;
-            if (this.existsBadPattern(bitarray, canvas.width, canvas.height)) {
-                point += 40;
-            }
-            const black = this.countBitarray(bitarray, false);
-            const per = Math.floor(black * 100 / bitarray.length);
-            let k = Math.abs(per - 50);
-            while (5 <= k) {
-                point += 10;
-                k -= 5;
-            }
-            return point;
-        }
-        sameBitarrayLines(bitarray, width, height) {
-            const lines = [];
-            for (let y = 0; y < height; ++y) {
-                let color = bitarray[y * width];
-                let count = 1;
-                for (let x = 1; x < width; ++x) {
-                    if (bitarray[y * width + x] === color) {
-                        ++count;
-                        continue;
-                    }
-                    if (5 <= count) {
-                        lines.push(count);
-                    }
-                    color = bitarray[y * width + x];
-                    count = 1;
-                }
-            }
-            for (let x = 0; x < width; ++x) {
-                let color = bitarray[x];
-                let count = 1;
-                for (let y = 1; y < height; ++y) {
-                    if (bitarray[y * width + x] === color) {
-                        ++count;
-                        continue;
-                    }
-                    if (5 <= count) {
-                        lines.push(count);
-                    }
-                    color = bitarray[y * width + x];
-                    count = 1;
-                }
-            }
-            return lines;
-        }
-        count2x2Blocks(bitarray, width, height) {
-            let count = 0;
-            for (let y = 1; y < height; ++y) {
-                for (let x = 1; x < width; ++x) {
-                    if (bitarray[y * width + x - 1] === bitarray[y * width + x] &&
-                        bitarray[(y - 1) * width + x] === bitarray[y * width + x] &&
-                        bitarray[(y - 1) * width + x - 1] === bitarray[y * width + x]) {
-                        ++count;
-                    }
-                }
-            }
-            return count;
-        }
-        existsBadPattern(bitarray, width, height) {
-            const bad = [false, true, false, false, false, true, false];
-            for (let y = 0; y < height; ++y) {
-                let s = 0;
-                for (let x = 0; x < width; ++x) {
-                    if (bitarray[y * width + x] === bad[s]) {
-                        ++s;
-                        if (bad.length <= s) {
-                            if (9 < x && bitarray[y * width + x - 7] && bitarray[y * width + x - 6] && bitarray[y * width + x - 5] && bitarray[y * width + x - 4]) {
-                                return true;
-                            }
-                            if (x + 4 < width && bitarray[y * width + x + 1] && bitarray[y * width + x + 2] && bitarray[y * width + x + 3] && bitarray[y * width + x + 4]) {
-                                return true;
-                            }
-                        }
-                    }
-                    else {
-                        s = (bitarray[y * width + x] === bad[s]) ? 1 : 0;
-                    }
-                }
-            }
-            for (let x = 0; x < width; ++x) {
-                let s = 0;
-                for (let y = 0; y < height; ++y) {
-                    if (bitarray[y * width + x] === bad[s]) {
-                        ++s;
-                        if (bad.length <= s) {
-                            if (9 < y && bitarray[(y - 7) * width + x] && bitarray[(y - 6) * width + x] && bitarray[(y - 5) * width + x] && bitarray[(y - 4) * width + x]) {
-                                return true;
-                            }
-                            if (y + 4 < width && bitarray[(y + 1) * width + x] && bitarray[(y + 2) * width + x] && bitarray[(y + 3) * width + x] && bitarray[(y + 4) * width + x]) {
-                                return true;
-                            }
-                        }
-                    }
-                    else {
-                        s = (bitarray[y * width + x] === bad[s]) ? 1 : 0;
-                    }
-                }
-            }
-            return false;
-        }
-        countBitarray(bitarray, target) {
-            let count = 0;
-            for (let i = 0; i < bitarray.length; ++i) {
-                if (bitarray[i] === target) {
-                    ++count;
-                }
-            }
-            return count;
-        }
-    }
-    QRLite.Generator = Generator;
-    function convert(data) {
-        const qr = new Generator();
-        return qr.convert(data, 'Q');
-    }
-    QRLite.convert = convert;
 })(QRLite || (QRLite = {}));
 module.exports = QRLite;

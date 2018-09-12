@@ -1,25 +1,25 @@
 declare module QRLite {
-    type QRLiteLevel = 'L' | 'M' | 'H' | 'Q';
+    type Level = 'L' | 'M' | 'H' | 'Q';
     interface QRLiteRSBlock {
         count: number;
         block: number[];
     }
-    interface QRLiteLevelData {
+    interface LevelData {
         DataCode: number;
         ECCode: number;
         Size: number;
         RS: QRLiteRSBlock[];
     }
-    interface QRDATA {
+    interface QRInfo {
         Level: {
-            [key: string]: number;
+            [key in Level]: number;
         };
         Data: {
             [key: number]: {
-                L: QRLiteLevelData;
-                M: QRLiteLevelData;
-                H: QRLiteLevelData;
-                Q: QRLiteLevelData;
+                L: LevelData;
+                M: LevelData;
+                H: LevelData;
+                Q: LevelData;
                 Alignment: {
                     x: number;
                     y: number;
@@ -37,7 +37,6 @@ declare module QRLite {
             [key: number]: (i: number, j: number) => boolean;
         };
     }
-    const QR: QRDATA;
     class BitCanvas {
         width: number;
         height: number;
@@ -47,11 +46,11 @@ declare module QRLite {
         reverse(func: (i: number, j: number) => boolean, mask: boolean[]): this;
         getPixel(x: number, y: number): boolean;
         getPixels(): boolean[];
-        drawPixel(x: number, y: number, white: boolean): this | undefined;
+        drawPixel(x: number, y: number, black: boolean): this | undefined;
         drawFromBitarray(bitarray: boolean[]): this;
         isTransparentPixel(x: number, y: number): boolean;
         drawTimingPattern(): this;
-        drawQRInfo(level?: QRLiteLevel, mask?: number): this;
+        drawQRInfo(level?: Level, mask?: number): this;
         drawFinderPattern(x: number, y: number): this;
         drawAlignmentPattern(x: number, y: number): this;
         drawPattern(pattern: (number | boolean)[], x: number, y: number, w: number, h: number): this;
@@ -67,11 +66,11 @@ declare module QRLite {
             right: boolean;
         };
         fillEmptyWhite(): number;
-        private existsEmpty(rx, y, up);
-        private noEmptyLine(x);
+        private existsEmpty;
+        private noEmptyLine;
         print(white?: string, black?: string, none?: string): void;
         outputBitmapByte(frame?: number): number[];
-        private numberToLE4Byte(data);
+        private numberToLE4Byte;
     }
     class Generator {
         private level;
@@ -81,30 +80,30 @@ declare module QRLite {
         private mask;
         constructor();
         get(): BitCanvas;
-        getLevel(): QRLiteLevel;
-        setLevel(level: QRLiteLevel): QRLiteLevel;
+        getLevel(): Level;
+        setLevel(level: Level): Level;
         getVersion(): number;
         setData(data: string): Uint8Array | null;
         createDataCode(): Uint8Array[];
         drawData(data: Uint8Array, ec: Uint8Array): void;
         createMaskedQRCode(): BitCanvas[];
         selectQRCode(qrcodes: BitCanvas[]): number;
-        convert(datastr: string, level?: QRLiteLevel): BitCanvas;
-        private createDataBlock(level, version, data);
-        private createECBlock(level, version, blocks);
-        private convertStringByte(data);
-        private searchVersion(datasize, level);
-        private calcLengthBitarray(datasize, version, level);
-        private spritDataBlock(byte, rsblocks);
-        private countErrorCode(version, level);
-        private interleaveArrays(list);
-        private convertMask(canvas);
-        private rating(canvas);
-        private sameBitarrayLines(bitarray, width, height);
-        private count2x2Blocks(bitarray, width, height);
-        private existsBadPattern(bitarray, width, height);
-        private countBitarray(bitarray, target);
+        convert(datastr: string, level?: Level): BitCanvas;
+        private createDataBlock;
+        private createECBlock;
+        private convertStringByte;
+        private searchVersion;
+        private calcLengthBitarray;
+        private spritDataBlock;
+        private countErrorCode;
+        private interleaveArrays;
+        private convertMask;
+        private rating;
+        private sameBitarrayLines;
+        private count2x2Blocks;
+        private existsBadPattern;
+        private countBitarray;
     }
-    function convert(data: string): BitCanvas;
+    function convert(data: string, level?: Level): BitCanvas;
+    const INFO: QRInfo;
 }
-declare const module: any;
