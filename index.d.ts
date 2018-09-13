@@ -11,9 +11,6 @@ declare module QRLite {
         RS: QRLiteRSBlock[];
     }
     interface QRInfo {
-        Level: {
-            [key in Level]: number;
-        };
         Data: {
             [key: number]: {
                 L: LevelData;
@@ -36,6 +33,9 @@ declare module QRLite {
         Mask: {
             [key: number]: (i: number, j: number) => boolean;
         };
+    }
+    interface Rating {
+        calc: (canvas: BitCanvas) => number;
     }
     class BitCanvas {
         width: number;
@@ -65,12 +65,11 @@ declare module QRLite {
             up: boolean;
             right: boolean;
         };
-        fillEmptyWhite(): number;
+        fillEmpty(color?: boolean): number;
         private existsEmpty;
         private noEmptyLine;
         print(white?: string, black?: string, none?: string): void;
         outputBitmapByte(frame?: number): number[];
-        private numberToLE4Byte;
     }
     class Generator {
         private level;
@@ -78,15 +77,18 @@ declare module QRLite {
         private rawdata;
         private canvas;
         private mask;
+        private rating;
         constructor();
         get(): BitCanvas;
         getLevel(): Level;
         setLevel(level: Level): Level;
         getVersion(): number;
-        setData(data: string): Uint8Array | null;
+        setRating(rating?: Rating): void;
+        setData(data: string | Uint8Array): Uint8Array | null;
         createDataCode(): Uint8Array[];
         drawData(data: Uint8Array, ec: Uint8Array): void;
         createMaskedQRCode(): BitCanvas[];
+        evaluateQRCode(qrcodes: BitCanvas[]): number[];
         selectQRCode(qrcodes: BitCanvas[]): number;
         convert(datastr: string, level?: Level): BitCanvas;
         private createDataBlock;
@@ -98,11 +100,6 @@ declare module QRLite {
         private countErrorCode;
         private interleaveArrays;
         private convertMask;
-        private rating;
-        private sameBitarrayLines;
-        private count2x2Blocks;
-        private existsBadPattern;
-        private countBitarray;
     }
     function convert(data: string, level?: Level): BitCanvas;
     const INFO: QRInfo;

@@ -9,11 +9,12 @@
   "scripts": {
     "browser": "tsc --p src/browser",
     "nodejs": "tsc --p src/nodejs",
+    "build": "tsc --p test",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Hiroki",
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "9.4.7"
+    "@types/node": "^9.4.7"
   }
 }

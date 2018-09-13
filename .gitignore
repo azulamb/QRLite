@@ -60,3 +60,5 @@ typings/
 tmp/
 
 *.bmp
+
+package-lock.json

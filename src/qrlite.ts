@@ -1,3 +1,7 @@
+/*========================================
+QRLite ... 8bit mode QRCode Generator
+========================================*/
+
 module QRLite
 {
 	const W = 0;
@@ -25,7 +29,6 @@ module QRLite
 
 	export interface QRInfo
 	{
-		Level: { [ key in Level ]: number },
 		Data:
 		{
 			[ key: number ]: // version.
@@ -40,6 +43,11 @@ module QRLite
 		ItoE: number[],
 		G: { [ key: number ]: { a: number, x: number }[] },
 		Mask: { [ key: number ]: ( i: number, j: number ) => boolean },
+	}
+
+	export interface Rating
+	{
+		calc: ( canvas: BitCanvas ) => number;
 	}
 
 	/*========================================
@@ -132,6 +140,161 @@ module QRLite
 		{
 			const b = this.byte[ Math.floor( this.cursor / 8 ) ];
 			return !!( b & ( 1 << ( 7 - ( this.cursor++ % 8 ) ) ) );
+		}
+	}
+
+	class MonochromeBitmap
+	{
+		public output( canvas: BitCanvas, frame: number = 1 )
+		{
+			const width = canvas.width;
+			const height = canvas.height;
+			const bitarray = canvas.getPixels();
+			const byte: number[] = [];
+
+			if ( frame <= 0 ) { frame = 0; }
+
+			// BMP header.
+			byte.push( 0x42, 0x4D );
+			// File size.(After set.)
+			byte.push( 0, 0, 0, 0 );
+			// Empty
+			byte.push( 0, 0, 0, 0 );
+			// Offset.(after)
+			byte.push( 0, 0, 0, 0 );
+
+			// Header size.
+			byte.push( ... this.numberToLE4Byte( 40 ) );
+			// Width.
+			byte.push( ... this.numberToLE4Byte( width + frame * 2 ) );
+			// Height.
+			byte.push( ... this.numberToLE4Byte( height + frame * 2 ) );
+			// ???
+			byte.push( 1, 0 );
+			byte.push( 1, 0 );
+			byte.push( 0, 0, 0, 0 );
+			// Datasize.(after)
+			byte.push( 0, 0, 0, 0 );
+			// Option.
+			byte.push( 0, 0, 0, 0 );
+			byte.push( 0, 0, 0, 0 );
+			byte.push( 0, 0, 0, 0 );
+			byte.push( 0, 0, 0, 0 );
+			// Pallet.
+			byte.push( 0, 0, 0, 0 );
+			byte.push( 255, 255, 255, 0 );
+
+			// Offset.
+			const offset = this.numberToLE4Byte( byte.length );
+			byte[ 10 ] = offset[ 0 ];
+			byte[ 11 ] = offset[ 1 ];
+			byte[ 12 ] = offset[ 2 ];
+			byte[ 13 ] = offset[ 3 ];
+
+			// Image data.
+
+			// Frame = only white
+			for ( let y = 0 ; y < frame ; ++y )
+			{
+				const length = width + frame * 2;
+				let count = 0;
+				let x: number;
+				for ( x = 0 ; x < length ; x += 8 )
+				{
+					++count;
+					byte.push( 255 );
+				}
+				if ( length % 8 !== 0 )
+				{
+					++count;
+					x = length % 8;
+					const dot8 = [ false, false, false, false, false, false, false, false ];
+					for ( let i = 0 ; i < 8 ; ++i ) { dot8[ i ] = i < x; }
+					byte.push( (dot8[ 0 ] ? 128 : 0) + (dot8[ 1 ] ? 64 : 0) + (dot8[ 2 ] ? 32 : 0) + (dot8[ 3 ] ? 16 : 0) + (dot8[ 4 ] ? 8 : 0) + (dot8[ 5 ] ? 4 : 0) + (dot8[ 6 ] ? 2 : 0) + (dot8[ 7 ] ? 1 : 0) );
+				}
+				while ( count % 4 !== 0 ) { ++count; byte.push( 0 ); }
+			}
+
+			// Image = frame data frame
+			for ( let y = height - 1 ; 0 <= y ; --y )
+			{
+				const dot8 = [ false, false, false, false, false, false, false, false ];
+				let x: number;
+				let count = 0;
+				let w = 0;
+				for ( x = -frame ; x < width + frame ; ++x )
+				{
+					if ( x < 0 || width <= x )
+					{
+						dot8[ w ] = true;
+					} else
+					{
+						dot8[ w ] = !bitarray[ y * width + x ];
+					}
+					if ( ++w === 8 )
+					{
+						++count;
+						byte.push( (dot8[ 0 ] ? 128 : 0) + (dot8[ 1 ] ? 64 : 0) + (dot8[ 2 ] ? 32 : 0) + (dot8[ 3 ] ? 16 : 0) + (dot8[ 4 ] ? 8 : 0) + (dot8[ 5 ] ? 4 : 0) + (dot8[ 6 ] ? 2 : 0) + (dot8[ 7 ] ? 1 : 0) );
+						dot8[ 0 ] = dot8[ 1 ] = dot8[ 2 ] = dot8[ 3 ] = dot8[ 4 ] = dot8[ 5 ] = dot8[ 6 ] = dot8[ 7 ] = false;
+						w = 0;
+					}
+				}
+				if ( w % 8 !== 0 )
+				{
+					++count;
+					byte.push( (dot8[ 0 ] ? 128 : 0) + (dot8[ 1 ] ? 64 : 0) + (dot8[ 2 ] ? 32 : 0) + (dot8[ 3 ] ? 16 : 0) + (dot8[ 4 ] ? 8 : 0) + (dot8[ 5 ] ? 4 : 0) + (dot8[ 6 ] ? 2 : 0) + (dot8[ 7 ] ? 1 : 0) );
+				}
+				while ( count % 4 !== 0 ) { ++count; byte.push( 0 ); }
+			}
+
+			// Frame = only white
+			for ( let y = 0 ; y < frame ; ++y )
+			{
+				const length = width + frame * 2;
+				let count = 0;
+				let x: number;
+				for ( x = 0 ; x < length ; x += 8 )
+				{
+					++count;
+					byte.push( 255 );
+				}
+				if ( length % 8 !== 0 )
+				{
+					++count;
+					x = length % 8;
+					const dot8 = [ false, false, false, false, false, false, false, false ];
+					for ( let i = 0 ; i < 8 ; ++i ) { dot8[ i ] = i < x; }
+					byte.push( (dot8[ 0 ] ? 128 : 0) + (dot8[ 1 ] ? 64 : 0) + (dot8[ 2 ] ? 32 : 0) + (dot8[ 3 ] ? 16 : 0) + (dot8[ 4 ] ? 8 : 0) + (dot8[ 5 ] ? 4 : 0) + (dot8[ 6 ] ? 2 : 0) + (dot8[ 7 ] ? 1 : 0) );
+				}
+				while ( count % 4 !== 0 ) { ++count; byte.push( 0 ); }
+			}
+
+			// File size.
+			const filesize = this.numberToLE4Byte( byte.length );
+			byte[ 2 ] = filesize[ 0 ];
+			byte[ 3 ] = filesize[ 1 ];
+			byte[ 4 ] = filesize[ 2 ];
+			byte[ 5 ] = filesize[ 3 ];
+
+			// Data size.
+			const datasize = this.numberToLE4Byte( byte.length - 54 );
+			byte[ 42 ] = datasize[ 0 ];
+			byte[ 43 ] = datasize[ 1 ];
+			byte[ 44 ] = datasize[ 2 ];
+			byte[ 45 ] = datasize[ 3 ];
+
+			return byte;
+		}
+
+		private numberToLE4Byte( data: number )
+		{
+			const byte = [ 0, 0, 0, 0 ];
+			for ( let i = 0 ; i < 4 ; ++i )
+			{
+				byte[ i ] = data % 256;
+				data = Math.floor( data / 256 );
+			}
+			return byte;
 		}
 	}
 
@@ -432,13 +595,13 @@ module QRLite
 			return cursor;
 		}
 
-		public fillEmptyWhite()
+		public fillEmpty( color = true )
 		{
 			const length = this.width * this.height;
 			let count = 0;
 			for ( let i = 0 ; i < length ; ++i )
 			{
-				if ( this.bitarray[ i ] === undefined ) { this.bitarray[ i ] = !!W; ++count; }
+				if ( this.bitarray[ i ] === undefined ) { this.bitarray[ i ] = color; ++count; }
 			}
 			return count;
 		}
@@ -484,434 +647,14 @@ module QRLite
 
 		public outputBitmapByte( frame: number = 1 )
 		{
-			const byte: number[] = [];
-
-			if ( frame <= 0 ) { frame = 0; }
-
-			// BMP header.
-			byte.push( 0x42, 0x4D );
-			// File size.(After set.)
-			byte.push( 0, 0, 0, 0 );
-			// Empty
-			byte.push( 0, 0, 0, 0 );
-			// Offset.(after)
-			byte.push( 0, 0, 0, 0 );
-
-			// Header size.
-			byte.push( ... this.numberToLE4Byte( 40 ) );
-			// Width.
-			byte.push( ... this.numberToLE4Byte( this.width + frame * 2 ) );
-			// Height.
-			byte.push( ... this.numberToLE4Byte( this.height + frame * 2 ) );
-			// ???
-			byte.push( 1, 0 );
-			byte.push( 1, 0 );
-			byte.push( 0, 0, 0, 0 );
-			// Datasize.(after)
-			byte.push( 0, 0, 0, 0 );
-			// Option.
-			byte.push( 0, 0, 0, 0 );
-			byte.push( 0, 0, 0, 0 );
-			byte.push( 0, 0, 0, 0 );
-			byte.push( 0, 0, 0, 0 );
-			// Pallet.
-			byte.push( 0, 0, 0, 0 );
-			byte.push( 255, 255, 255, 0 );
-
-			// Offset.
-			const offset = this.numberToLE4Byte( byte.length );
-			byte[ 10 ] = offset[ 0 ];
-			byte[ 11 ] = offset[ 1 ];
-			byte[ 12 ] = offset[ 2 ];
-			byte[ 13 ] = offset[ 3 ];
-
-			// Image data.
-
-			// Frame = only white
-			for ( let y = 0 ; y < frame ; ++y )
-			{
-				const length = this.width + frame * 2;
-				let count = 0;
-				let x: number;
-				for ( x = 0 ; x < length ; x += 8 )
-				{
-					++count;
-					byte.push( 255 );
-				}
-				if ( length % 8 !== 0 )
-				{
-					++count;
-					x = length % 8;
-					const dot8 = [ false, false, false, false, false, false, false, false ];
-					for ( let i = 0 ; i < 8 ; ++i ) { dot8[ i ] = i < x; }
-					byte.push( (dot8[ 0 ] ? 128 : 0) + (dot8[ 1 ] ? 64 : 0) + (dot8[ 2 ] ? 32 : 0) + (dot8[ 3 ] ? 16 : 0) + (dot8[ 4 ] ? 8 : 0) + (dot8[ 5 ] ? 4 : 0) + (dot8[ 6 ] ? 2 : 0) + (dot8[ 7 ] ? 1 : 0) );
-				}
-				while ( count % 4 !== 0 ) { ++count; byte.push( 0 ); }
-			}
-
-			// Image = frame data frame
-			for ( let y = this.height - 1 ; 0 <= y ; --y )
-			{
-				const dot8 = [ false, false, false, false, false, false, false, false ];
-				let x: number;
-				let count = 0;
-				let w = 0;
-				for ( x = -frame ; x < this.width + frame ; ++x )
-				{
-					if ( x < 0 || this.width <= x )
-					{
-						dot8[ w ] = true;
-					} else
-					{
-						dot8[ w ] = !this.bitarray[ y * this.width + x ];
-					}
-					if ( ++w === 8 )
-					{
-						++count;
-						byte.push( (dot8[ 0 ] ? 128 : 0) + (dot8[ 1 ] ? 64 : 0) + (dot8[ 2 ] ? 32 : 0) + (dot8[ 3 ] ? 16 : 0) + (dot8[ 4 ] ? 8 : 0) + (dot8[ 5 ] ? 4 : 0) + (dot8[ 6 ] ? 2 : 0) + (dot8[ 7 ] ? 1 : 0) );
-						dot8[ 0 ] = dot8[ 1 ] = dot8[ 2 ] = dot8[ 3 ] = dot8[ 4 ] = dot8[ 5 ] = dot8[ 6 ] = dot8[ 7 ] = false;
-						w = 0;
-					}
-				}
-				if ( w % 8 !== 0 )
-				{
-					++count;
-					byte.push( (dot8[ 0 ] ? 128 : 0) + (dot8[ 1 ] ? 64 : 0) + (dot8[ 2 ] ? 32 : 0) + (dot8[ 3 ] ? 16 : 0) + (dot8[ 4 ] ? 8 : 0) + (dot8[ 5 ] ? 4 : 0) + (dot8[ 6 ] ? 2 : 0) + (dot8[ 7 ] ? 1 : 0) );
-				}
-				while ( count % 4 !== 0 ) { ++count; byte.push( 0 ); }
-			}
-
-			// Frame = only white
-			for ( let y = 0 ; y < frame ; ++y )
-			{
-				const length = this.width + frame * 2;
-				let count = 0;
-				let x: number;
-				for ( x = 0 ; x < length ; x += 8 )
-				{
-					++count;
-					byte.push( 255 );
-				}
-				if ( length % 8 !== 0 )
-				{
-					++count;
-					x = length % 8;
-					const dot8 = [ false, false, false, false, false, false, false, false ];
-					for ( let i = 0 ; i < 8 ; ++i ) { dot8[ i ] = i < x; }
-					byte.push( (dot8[ 0 ] ? 128 : 0) + (dot8[ 1 ] ? 64 : 0) + (dot8[ 2 ] ? 32 : 0) + (dot8[ 3 ] ? 16 : 0) + (dot8[ 4 ] ? 8 : 0) + (dot8[ 5 ] ? 4 : 0) + (dot8[ 6 ] ? 2 : 0) + (dot8[ 7 ] ? 1 : 0) );
-				}
-				while ( count % 4 !== 0 ) { ++count; byte.push( 0 ); }
-			}
-
-			// File size.
-			const filesize = this.numberToLE4Byte( byte.length );
-			byte[ 2 ] = filesize[ 0 ];
-			byte[ 3 ] = filesize[ 1 ];
-			byte[ 4 ] = filesize[ 2 ];
-			byte[ 5 ] = filesize[ 3 ];
-
-			// Data size.
-			const datasize = this.numberToLE4Byte( byte.length - 54 );
-			byte[ 42 ] = datasize[ 0 ];
-			byte[ 43 ] = datasize[ 1 ];
-			byte[ 44 ] = datasize[ 2 ];
-			byte[ 45 ] = datasize[ 3 ];
-
-			return byte;
-		}
-
-		private numberToLE4Byte( data: number )
-		{
-			const byte = [ 0, 0, 0, 0 ];
-			for ( let i = 0 ; i < 4 ; ++i )
-			{
-				byte[ i ] = data % 256;
-				data = Math.floor( data / 256 );
-			}
-			return byte;
+			const bitmap = new MonochromeBitmap();
+			return bitmap.output( this, frame );
 		}
 	}
 
-	/*========================================
-	    QR code generator
-	========================================*/
-
-	export class Generator
+	class DefaultRating implements Rating
 	{
-		private level: Level;
-		private version: number;
-		private rawdata: Uint8Array;
-		private canvas: BitCanvas;
-		private mask: boolean[];
-
-		constructor()
-		{
-			this.level = 'Q';
-			this.version = 0;
-		}
-
-		public get() { return this.canvas; }
-
-		public getLevel() { return this.level; }
-
-		public setLevel( level: Level )
-		{
-			if ( level !== 'L' && level !== 'M' && level !== 'Q' && level !== 'H' ) { level = 'Q'; }
-			this.level = level;
-			return this.level;
-		}
-
-		public getVersion() { return this.version; }
-
-		public setData( data: string )
-		{
-			this.rawdata = this.convertStringByte( data );
-			this.version = this.searchVersion( data.length, this.level );
-
-			if ( this.version <= 0 ) { return null; }
-
-			// version1 = 21, 2 = 25, ...
-			const w = 17 + this.version * 4;
-			const h = w;
-			this.canvas = new BitCanvas( w, h );
-			this.canvas.drawQRInfo(); // draw empty info.
-			this.canvas.drawTimingPattern();
-			this.canvas.drawFinderPattern( -1, -1 );
-			this.canvas.drawFinderPattern( w - 8, -1 );
-			this.canvas.drawFinderPattern( -1, h - 8 );
-			if ( INFO.Data[ this.version ].Alignment )
-			{
-				INFO.Data[ this.version ].Alignment.forEach( ( pos ) =>
-				{
-					this.canvas.drawAlignmentPattern( pos.x, pos.y );
-				} );
-			}
-
-			// Get writable mask. now undefined = writable = true.
-			this.mask = this.convertMask( this.canvas );
-
-			return this.rawdata;
-		}
-
-		public createDataCode()
-		{
-			const blocks = this.createDataBlock( this.level, this.version, this.rawdata );
-			const ecblocks = this.createECBlock( this.level, this.version, blocks );
-
-			const datacode: Uint8Array[] = [];
-			datacode.push( this.interleaveArrays( blocks ) );
-			datacode.push( this.interleaveArrays( ecblocks ) );
-
-			return datacode;
-		}
-
-		public drawData( data: Uint8Array, ec: Uint8Array )
-		{
-			const cursor = this.canvas.drawQRByte( data );
-			this.canvas.drawQRByte( ec, cursor );
-			this.canvas.fillEmptyWhite();
-		}
-
-		public createMaskedQRCode()
-		{
-			const masked: BitCanvas[] = [];
-			for ( let masknum = 0 ; masknum < 8 ; ++masknum )
-			{
-				masked.push( this.canvas.clone().reverse( INFO.Mask[ masknum ], this.mask ) );
-			}
-
-			masked.forEach( ( qrcode, masknum ) =>
-			{
-				qrcode.drawQRInfo( this.level, masknum );
-			} );
-
-			return masked;
-		}
-
-		public selectQRCode( qrcodes: BitCanvas[] )
-		{
-			let masknum = 0;
-			let minpoint = this.rating( qrcodes[ masknum ] );
-			for ( let i = 1 ; i < qrcodes.length ; ++i )
-			{
-				const point = this.rating( qrcodes[ i ] );
-				if ( point < minpoint ) { masknum = i; minpoint = point; }
-			}
-			return masknum;
-		}
-
-		public convert( datastr: string, level?: Level )
-		{
-			const newlevel = this.setLevel( level || this.level );
-
-			this.setData( datastr );
-
-			// [ 0 ] = Data block, [ 1 ] = EC Block
-			const datacode = this.createDataCode();
-
-			this.drawData( datacode[ 0 ], datacode[ 1 ] );
-
-			const masked = this.createMaskedQRCode();
-
-			const masknum = this.selectQRCode( masked );
-
-			return masked[ masknum ];
-		}
-
-		private createDataBlock( level: Level, version: number, data: Uint8Array )
-		{
-			const byte = new Byte( INFO.Data[ version ][ level ].DataCode );
-
-			// Byte mode.
-			byte.addBit( 0, 1, 0, 0 );
-
-			byte.addBit( ... this.calcLengthBitarray( data.length, version, level ) );
-
-			byte.addByte( data );
-
-			// End pattern.
-			byte.addBit( 0, 0, 0, 0 );
-
-			byte.add0Bit();
-
-			for ( let i = byte.writeByteSize() ; i < byte.size() ; ++i )
-			{
-				byte.addByteNumber( 236 ); // 11101100
-				if ( byte.size() <= ++i ) { break; }
-				byte.addByteNumber( 17 ); // 00010001
-			}
-
-			return this.spritDataBlock( byte.get(), INFO.Data[ version ][ level ].RS );
-		}
-
-		private createECBlock( level: Level, version: number, blocks: Uint8Array[] )
-		{
-			const countEC = this.countErrorCode( version, level );
-			const g = INFO.G[ countEC ];
-
-			return blocks.map( ( block ) =>
-			{
-				let f: { k: number, x: number }[] = [];
-				const ecblock = new Uint8Array( countEC );
-
-				let count = ecblock.length + block.length;
-				block.forEach( ( num, i ) =>
-				{
-					f.push( { k: num, x: --count } );
-				} );
-				while ( 0 < count ) { f.push( { k: 0, x: --count } ); }
-
-				for ( let i = 0 ; i < block.length ; ++i )
-				{
-					const k = INFO.ItoE[ f[ i ].k ];
-					const px = f[ i ].x - g[ 0 ].x;
-
-					const gax = g.map( ( v, index ) =>
-					{
-						const e = ( k + v.a ) % 255;
-						return { k: INFO.ItoE.indexOf( e ), x: v.x + px };
-					} );
-
-					f = f.map( ( v, index ) =>
-					{
-						if ( index < i ) { return { k: 0, x: v.x }; }
-						return { k: (gax[ index - i ] ? v.k ^ gax[ index - i ].k : 0), x: v.x };
-					} );
-				}
-
-				for ( let i =0 ; i < ecblock.length ; ++i )
-				{
-					ecblock[ i ] = f[ i + block.length ].k;
-				}
-
-				return ecblock;
-			} );
-		}
-
-		private convertStringByte( data: string )
-		{
-			return ( new Uint8Array( data.split( '' ).map( ( c ) =>
-			{
-				return c.charCodeAt( 0 );
-			} ) ) );
-		}
-
-		private searchVersion( datasize: number, level: Level )
-		{
-			const versions = Object.keys( INFO.Data );
-
-			for ( let i = 0 ; i < versions.length ; ++i )
-			{
-				if ( datasize < INFO.Data[ parseInt( versions[ i ] ) ][ level ].Size ) { return parseInt( versions[ i ] ); }
-			}
-
-			return 0;
-		}
-
-		private calcLengthBitarray( datasize: number, version: number, level: Level )
-		{
-			const bitlen = 8;
-			const byte: number[] = [];
-			for ( let i = bitlen - 1 ; 0 <= i ; --i )
-			{
-				byte[ i ] = datasize % 2;
-				datasize = Math.floor( datasize / 2 );
-			}
-			return byte;
-		}
-
-		private spritDataBlock( byte: Uint8Array, rsblocks: QRLiteRSBlock[] )
-		{
-			const blocks: Uint8Array[] = [];
-			let begin = 0;
-			rsblocks.forEach( ( info ) =>
-			{
-				for ( let i = 0 ; i < info.count ; ++i )
-				{
-					blocks.push( byte.slice( begin, begin + info.block[ 1 ] ) );
-					begin += info.block[ 1 ];
-				}
-			} );
-			return blocks;
-		}
-
-		private countErrorCode( version: number, level: Level )
-		{
-			const code = INFO.Data[ version ][ level ].ECCode;
-			let count = 0;
-			INFO.Data[ version ][ level ].RS.forEach( ( block ) =>
-			{
-				count += block.count;
-			} );
-			return Math.floor( code / count );
-		}
-
-		private interleaveArrays( list: Uint8Array[] )
-		{
-			const size = list.map( ( v ) => { return v.length; } ).reduce( ( prev, current ) => { return prev + current; } );
-			const byte = new Uint8Array( size );
-			const length = list[ list.length - 1 ].length;
-			let count = 0;
-			for ( let i = 0 ; i < length ; ++i )
-			{
-				for ( let a = 0 ; a < list.length ; ++a )
-				{
-					if ( list[ a ].length <= i ) { continue; }
-					byte[ count++ ] = list[ a ][ i ];
-				}
-			}
-			return byte;
-		}
-
-		private convertMask( canvas: BitCanvas )
-		{
-			const _mask = canvas.getPixels();
-			const mask: boolean[] = [];
-			for( let i = 0 ; i < _mask.length ; ++i ) { mask.push( _mask[ i ] === undefined ); }
-			return mask;
-		}
-
-		private rating( canvas: BitCanvas )
+		public calc( canvas: BitCanvas )
 		{
 			const bitarray = canvas.getPixels();
 			let point = 0;
@@ -1063,6 +806,296 @@ module QRLite
 	}
 
 	/*========================================
+	    QR code generator
+	========================================*/
+
+	export class Generator
+	{
+		private level: Level;
+		private version: number;
+		private rawdata: Uint8Array;
+		private canvas: BitCanvas;
+		private mask: boolean[];
+		private rating: Rating;
+
+		constructor()
+		{
+			this.level = 'Q';
+			this.version = 0;
+			this.setRating();
+		}
+
+		public get() { return this.canvas; }
+
+		public getLevel() { return this.level; }
+
+		public setLevel( level: Level )
+		{
+			if ( level !== 'L' && level !== 'M' && level !== 'Q' && level !== 'H' ) { level = 'Q'; }
+			this.level = level;
+			return this.level;
+		}
+
+		public getVersion() { return this.version; }
+
+		public setRating( rating?: Rating ) { this.rating = rating || new DefaultRating(); }
+
+		public setData( data: string | Uint8Array )
+		{
+			this.rawdata = ( typeof data === 'string' ) ? this.convertStringByte( data ) : data;
+			this.version = this.searchVersion( data.length, this.level );
+
+			if ( this.version <= 0 ) { return null; }
+
+			// version1 = 21, 2 = 25, ...
+			const w = 17 + this.version * 4;
+			const h = w;
+			this.canvas = new BitCanvas( w, h );
+			this.canvas.drawQRInfo(); // draw empty info.
+			this.canvas.drawTimingPattern();
+			this.canvas.drawFinderPattern( -1, -1 );
+			this.canvas.drawFinderPattern( w - 8, -1 );
+			this.canvas.drawFinderPattern( -1, h - 8 );
+			if ( INFO.Data[ this.version ].Alignment )
+			{
+				INFO.Data[ this.version ].Alignment.forEach( ( pos ) =>
+				{
+					this.canvas.drawAlignmentPattern( pos.x, pos.y );
+				} );
+			}
+
+			// Get writable mask. now undefined = writable = true.
+			this.mask = this.convertMask( this.canvas );
+
+			return this.rawdata;
+		}
+
+		public createDataCode()
+		{
+			const blocks = this.createDataBlock( this.level, this.version, this.rawdata );
+			const ecblocks = this.createECBlock( this.level, this.version, blocks );
+
+			const datacode: Uint8Array[] = [];
+			datacode.push( this.interleaveArrays( blocks ) );
+			datacode.push( this.interleaveArrays( ecblocks ) );
+
+			return datacode;
+		}
+
+		public drawData( data: Uint8Array, ec: Uint8Array )
+		{
+			const cursor = this.canvas.drawQRByte( data );
+			this.canvas.drawQRByte( ec, cursor );
+			this.canvas.fillEmpty();
+		}
+
+		public createMaskedQRCode()
+		{
+			const masked: BitCanvas[] = [];
+			for ( let masknum = 0 ; masknum < 8 ; ++masknum )
+			{
+				masked.push( this.canvas.clone().reverse( INFO.Mask[ masknum ], this.mask ) );
+			}
+
+			masked.forEach( ( qrcode, masknum ) =>
+			{
+				qrcode.drawQRInfo( this.level, masknum );
+			} );
+
+			return masked;
+		}
+
+		public evaluateQRCode( qrcodes: BitCanvas[] )
+		{
+			return qrcodes.map( ( canvas ) => { return this.rating.calc( canvas ); } );
+		}
+
+		public selectQRCode( qrcodes: BitCanvas[] )
+		{
+			const points = this.evaluateQRCode( qrcodes );
+			let masknum = 0;
+			let minpoint = points[ 0 ];
+			for ( let i = 1 ; i < points.length ; ++i )
+			{
+				if ( points[ i ] < minpoint ) { masknum = i; minpoint = points[ i ]; }
+			}
+			return masknum;
+		}
+
+		public convert( datastr: string, level?: Level )
+		{
+			const newlevel = this.setLevel( level || this.level );
+
+			this.setData( datastr );
+
+			// [ 0 ] = Data block, [ 1 ] = EC Block
+			const datacode = this.createDataCode();
+
+			this.drawData( datacode[ 0 ], datacode[ 1 ] );
+
+			const masked = this.createMaskedQRCode();
+
+			const masknum = this.selectQRCode( masked );
+
+			return masked[ masknum ];
+		}
+
+		private createDataBlock( level: Level, version: number, data: Uint8Array )
+		{
+			const byte = new Byte( INFO.Data[ version ][ level ].DataCode );
+
+			// Byte mode.
+			byte.addBit( 0, 1, 0, 0 );
+
+console.log(data.length, version, level,this.calcLengthBitarray( data.length, version, level ));
+			byte.addBit( ... this.calcLengthBitarray( data.length, version, level ) );
+
+			byte.addByte( data );
+
+			// End pattern.
+			byte.addBit( 0, 0, 0, 0 );
+
+			byte.add0Bit();
+
+			for ( let i = byte.writeByteSize() ; i < byte.size() ; ++i )
+			{
+				byte.addByteNumber( 236 ); // 11101100
+				if ( byte.size() <= ++i ) { break; }
+				byte.addByteNumber( 17 ); // 00010001
+			}
+
+			return this.spritDataBlock( byte.get(), INFO.Data[ version ][ level ].RS );
+		}
+
+		private createECBlock( level: Level, version: number, blocks: Uint8Array[] )
+		{
+			const countEC = this.countErrorCode( version, level );
+			const g = INFO.G[ countEC ];
+
+			return blocks.map( ( block ) =>
+			{
+				let f: { k: number, x: number }[] = [];
+				const ecblock = new Uint8Array( countEC );
+
+				let count = ecblock.length + block.length;
+				block.forEach( ( num, i ) =>
+				{
+					f.push( { k: num, x: --count } );
+				} );
+				while ( 0 < count ) { f.push( { k: 0, x: --count } ); }
+
+				for ( let i = 0 ; i < block.length ; ++i )
+				{
+					const k = INFO.ItoE[ f[ i ].k ];
+					const px = f[ i ].x - g[ 0 ].x;
+
+					const gax = g.map( ( v, index ) =>
+					{
+						const e = ( k + v.a ) % 255;
+						return { k: INFO.ItoE.indexOf( e ), x: v.x + px };
+					} );
+
+					f = f.map( ( v, index ) =>
+					{
+						if ( index < i ) { return { k: 0, x: v.x }; }
+						return { k: (gax[ index - i ] ? v.k ^ gax[ index - i ].k : 0), x: v.x };
+					} );
+				}
+
+				for ( let i =0 ; i < ecblock.length ; ++i )
+				{
+					ecblock[ i ] = f[ i + block.length ].k;
+				}
+
+				return ecblock;
+			} );
+		}
+
+		private convertStringByte( data: string )
+		{
+			return ( new Uint8Array( data.split( '' ).map( ( c ) =>
+			{
+				return c.charCodeAt( 0 );
+			} ) ) );
+		}
+
+		private searchVersion( datasize: number, level: Level )
+		{
+			const versions = Object.keys( INFO.Data );
+
+			for ( let i = 0 ; i < versions.length ; ++i )
+			{
+				if ( datasize < INFO.Data[ parseInt( versions[ i ] ) ][ level ].Size ) { return parseInt( versions[ i ] ); }
+			}
+
+			return 0;
+		}
+
+		private calcLengthBitarray( datasize: number, version: number, level: Level )
+		{
+			const bitlen = 8;
+			const byte: number[] = [];
+			for ( let i = bitlen - 1 ; 0 <= i ; --i )
+			{
+				byte[ i ] = datasize % 2;
+				datasize = Math.floor( datasize / 2 );
+			}
+			return byte;
+		}
+
+		private spritDataBlock( byte: Uint8Array, rsblocks: QRLiteRSBlock[] )
+		{
+			const blocks: Uint8Array[] = [];
+			let begin = 0;
+			rsblocks.forEach( ( info ) =>
+			{
+				for ( let i = 0 ; i < info.count ; ++i )
+				{
+					blocks.push( byte.slice( begin, begin + info.block[ 1 ] ) );
+					begin += info.block[ 1 ];
+				}
+			} );
+			return blocks;
+		}
+
+		private countErrorCode( version: number, level: Level )
+		{
+			const code = INFO.Data[ version ][ level ].ECCode;
+			let count = 0;
+			INFO.Data[ version ][ level ].RS.forEach( ( block ) =>
+			{
+				count += block.count;
+			} );
+			return Math.floor( code / count );
+		}
+
+		private interleaveArrays( list: Uint8Array[] )
+		{
+			const size = list.map( ( v ) => { return v.length; } ).reduce( ( prev, current ) => { return prev + current; } );
+			const byte = new Uint8Array( size );
+			const length = list[ list.length - 1 ].length;
+			let count = 0;
+			for ( let i = 0 ; i < length ; ++i )
+			{
+				for ( let a = 0 ; a < list.length ; ++a )
+				{
+					if ( list[ a ].length <= i ) { continue; }
+					byte[ count++ ] = list[ a ][ i ];
+				}
+			}
+			return byte;
+		}
+
+		private convertMask( canvas: BitCanvas )
+		{
+			const _mask = canvas.getPixels();
+			const mask: boolean[] = [];
+			for( let i = 0 ; i < _mask.length ; ++i ) { mask.push( _mask[ i ] === undefined ); }
+			return mask;
+		}
+	}
+
+	/*========================================
 	    Simple converter
 	========================================*/
 
@@ -1073,12 +1106,11 @@ module QRLite
 	}
 
 	/*========================================
-	    Data
+	    Static data
 	========================================*/
 
 	export const INFO: QRInfo =
 	{
-		Level: { L: 0, M: 1, Q: 2, H: 2 },
 		Data:
 		{
 			1:

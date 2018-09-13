@@ -51,6 +51,8 @@ const rawcanvas = qr.get();
 // Get masked canvases.(masked[ 0-7 ] = QRLite.Canvas)
 const masked = qr.createMaskedQRCode();
 
+// Print QRCode points.
+// console.log( qr.evaluateQRCode( masked ) );
 // Select mask number.
 const masknum = qr.selectQRCode( masked );
 
@@ -107,7 +109,17 @@ BitやByte周りの操作は別クラスで行い、QRコードの画像とし�
 
 バージョンは現在のレベルとデータ量に応じて変化します。
 
-### setData( data: string ) => UInt8Array
+### setRating( rating?: Rating )
+
+`interface QRLite.Rating { calc: ( canvas: BitCanvas ) => number; }` を継承したクラスのインスタンスを渡すと、その評価器を使ってQRコードを評価します。
+
+`QRLite.Rating` は `calc: ( canvas: BitCanvas ) => number` さえ実装していれば良いです。
+
+ちなみに、返す値が大きければ大きいほど減点が大きく悪いQRコードとなります。
+
+引数に何も与えない場合はデフォルトの評価器を再設定します。
+
+### setData( data: string | Uint8Array ) => UInt8Array
 
 QRコードのデータをセットします。
 
@@ -134,6 +146,15 @@ QRコードのデータをセットします。
 マスク処理を行った `QRLite.BitCanvas` の配列を与えると、その中で最も減点が低い `QRLite.BitCanvas` の番号が返されます。
 
 基本的には `createMaskedQRCode()` で得られた結果をそのまま与えます。
+
+### evaluateQRCode( qrcodes: BitCanvas[] ) => number[]
+
+上で使われている、QRコードの評価です。
+
+`QRLite.BitCanvas` の配列を与えると与えた順番に評価のポイントが返されます。
+
+仕様では減点ですが、こちらでは加点を行うため、正の値となっています。
+この結果、仕様では最も減点が少ないQRコードを採用することになっていますが、この場合は最もポイントが低いQRコードが評価の良いQRコードとなります。
 
 ## QRLite.BitCanvas
 
