@@ -738,7 +738,6 @@ var QRLite;
         createDataBlock(level, version, data) {
             const byte = new Byte(QRLite.INFO.Data[version][level].DataCode);
             byte.addBit(0, 1, 0, 0);
-            console.log(data.length, version, level, this.calcLengthBitarray(data.length, version, level));
             byte.addBit(...this.calcLengthBitarray(data.length, version, level));
             byte.addByte(data);
             byte.addBit(0, 0, 0, 0);
