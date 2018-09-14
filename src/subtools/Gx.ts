@@ -2,60 +2,9 @@
 Create G(x)
 */
 
-const list = [ 7, 10, 13, 15, 16, 17, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60, 62, 64, 66, 68 ];
-
-list.forEach( ( e ) =>
+class Gx
 {
-	console.log( e + ': [ ' + createGx( e ).map( ( v ) => { return '{ a: ' + v.a + ', x: ' + v.x + '}'; } ).join( ', ' ) + ' ],' );
-} );
-
-function createGx( ewords: number )
-{
-	let gx_array: number[] = [ 0, 0 ];
-
-	for( let i = 1 ; i < ewords ; ++i )
-	{
-		gx_array = calcGx( gx_array, [ 0, i ] );
-	}
-
-	const gx: { a: number, x: number }[] = [];
-
-	for ( let i = 0 ; i <= ewords ; ++i )
-	{
-		gx.push( { a: gx_array[ i ], x: ewords - i } );
-	}
-
-	return gx;
-}
-
-function calcGx( base_array: number[], n_array: number[] )
-{
-	const ret: number[] = [];
-
-	for( let i = 0 ; i < n_array.length ; ++i )
-	{
-		for ( let j = 0 ; j < base_array.length ; ++j )
-		{
-			// 係数部分のかけ算は足し算になる
-			let val = n_array[ i ] + base_array[ j ];
-			if ( 255 < val ) { val -= 255; }
-
-			if ( ret[ i + j ] === undefined )
-			{
-				ret[ i + j ] = val;
-			} else
-			{
-				ret[ i + j ] = calc_sum( ret[ i + j ], val );
-			}
-		}
-	}
-
-	return ret;
-}
-
-function calc_sum( i: number, j: number )
-{
-	const alpha_table =
+	public static alpha =
 	[
 		  1,   2,   4,   8,  16,  32,  64, 128,
 		 29,  58, 116, 232, 205, 135,  19,  38,
@@ -91,9 +40,64 @@ function calc_sum( i: number, j: number )
 		 27,  54, 108, 216, 173,  71, 142,   1,
 	];
 
-	let sum = alpha_table[ i ] ^ alpha_table[ j ];
+	public static create( ewords: number )
+	{
+		let gx_array: number[] = [ 0, 0 ];
 
-	if ( 255< sum ) { sum -= 255; }
+		for( let i = 1 ; i < ewords ; ++i )
+		{
+			gx_array = Gx.calc( gx_array, [ 0, i ] );
+		}
 
-	return alpha_table.indexOf( sum );
+		const gx: { a: number, x: number }[] = [];
+
+		for ( let i = 0 ; i <= ewords ; ++i )
+		{
+			gx.push( { a: gx_array[ i ], x: ewords - i } );
+		}
+
+		return gx;
+	}
+
+	private static calc( base_array: number[], n_array: number[] )
+	{
+		const ret: number[] = [];
+
+		for( let i = 0 ; i < n_array.length ; ++i )
+		{
+			for ( let j = 0 ; j < base_array.length ; ++j )
+			{
+				// 係数部分のかけ算は足し算になる
+				let val = n_array[ i ] + base_array[ j ];
+				if ( 255 < val ) { val -= 255; }
+
+				if ( ret[ i + j ] === undefined )
+				{
+					ret[ i + j ] = val;
+				} else
+				{
+					ret[ i + j ] = Gx.sum( ret[ i + j ], val );
+				}
+			}
+		}
+
+		return ret;
+	}
+
+	private static sum( i: number, j: number )
+	{
+
+		let sum = Gx.alpha[ i ] ^ Gx.alpha[ j ];
+
+		if ( 255 < sum ) { sum -= 255; }
+
+		return Gx.alpha.indexOf( sum );
+	}
 }
+
+const list = [ 7, 10, 13, 15, 16, 17, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60, 62, 64, 66, 68 ];
+
+list.forEach( ( e ) =>
+{
+	console.log( e + ': [ ' + Gx.create( e ).map( ( v ) => { return '{ a: ' + v.a + ', x: ' + v.x + '}'; } ).join( ', ' ) + ' ],' );
+} );

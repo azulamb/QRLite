@@ -67,7 +67,7 @@ module QRLite
 
 		public size() { return this.byte.length; }
 
-		public writeByteSize() { return Math.ceil( this.wbit / 8 ); }
+		public countByteSize() { return Math.ceil( this.wbit / 8 ); }
 
 		public get() { return this.byte; }
 
@@ -956,7 +956,7 @@ module QRLite
 
 			byte.add0Bit();
 
-			for ( let i = byte.writeByteSize() ; i < byte.size() ; ++i )
+			for ( let i = byte.countByteSize() ; i < byte.size() ; ++i )
 			{
 				byte.addByteNumber( 236 ); // 11101100
 				if ( byte.size() <= ++i ) { break; }
