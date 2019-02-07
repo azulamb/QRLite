@@ -759,7 +759,7 @@ module QRLite
 
 		private existsBadPattern( bitarray: boolean[], width: number, height: number )
 		{
-			const bad = [ false, true, false, false, false, true, false ];
+			const bad = [ true, false, true, true, true, false, true ];
 
 			for ( let y = 0 ; y < height ; ++y )
 			{
@@ -771,9 +771,9 @@ module QRLite
 						++s;
 						if ( bad.length <= s )
 						{
-							if ( 9 < x && bitarray[ y * width + x - 7 ] && bitarray[ y * width + x - 6 ] && bitarray[ y * width + x - 5 ] && bitarray[ y * width + x - 4 ] ) { return true; }
-							if ( x  + 4 < width && bitarray[ y * width + x + 1  ] && bitarray[ y * width + x + 2 ] && bitarray[ y * width + x + 3 ] && bitarray[ y * width + x + 4 ] ) { return true; }
-							//if ( x === 0 || x + bad.length === width - 1 ) { return true; }
+							if ( 10 <= x && !bitarray[ y * width + x - 10 ] && !bitarray[ y * width + x - 9 ] && !bitarray[ y * width + x - 8 ] && !bitarray[ y * width + x - 7 ] ) { return true; }
+							if ( x  + 4 < width && !bitarray[ y * width + x + 1  ] && !bitarray[ y * width + x + 2 ] && !bitarray[ y * width + x + 3 ] && !bitarray[ y * width + x + 4 ] ) { return true; }
+							s = 5;
 						}
 					} else
 					{
@@ -792,9 +792,9 @@ module QRLite
 						++s;
 						if ( bad.length <= s )
 						{
-							if ( 9 < y && bitarray[ ( y - 7 ) * width + x ] && bitarray[ ( y - 6 ) * width + x ] && bitarray[ ( y - 5 ) * width + x ] && bitarray[ ( y - 4 ) * width + x ] ) { return true; }
+							if ( 10 <= y && !bitarray[ ( y - 10 ) * width + x ] && !bitarray[ ( y - 9 ) * width + x ] && !bitarray[ ( y - 8 ) * width + x ] && !bitarray[ ( y  - 7 ) * width + x ] ) { return true; }
 							if ( y  + 4 < width && bitarray[ ( y + 1 ) * width + x  ] && bitarray[ ( y + 2 ) * width + x ] && bitarray[ ( y + 3 ) * width + x ] && bitarray[ ( y + 4 ) * width + x ] ) { return true; }
-							//if ( y === 0 || y + bad.length === height - 1 ) { return true; }
+							s = 5;
 						}
 					} else
 					{
@@ -822,6 +822,7 @@ module QRLite
 	{
 		private level: Level;
 		private version: number;
+		private lastmask = 0;
 		private rawdata: Uint8Array;
 		private canvas: BitCanvas;
 		private mask: boolean[];
@@ -880,6 +881,8 @@ module QRLite
 			
 			return this.version;
 		}
+
+		public getLastMask() { return this.lastmask; }
 
 		public setRating( rating?: Rating ) { this.rating = rating || new DefaultRating(); }
 
@@ -963,9 +966,9 @@ module QRLite
 
 			const masked = this.createMaskedQRCode();
 
-			const masknum = ( typeof option.mask === 'number' && 0 <= option.mask && option.mask <= 7 ) ? Math.floor( option.mask ) : this.selectQRCode( masked );
+			this.lastmask = ( typeof option.mask === 'number' && 0 <= option.mask && option.mask <= 7 ) ? Math.floor( option.mask ) : this.selectQRCode( masked );
 
-			return masked[ masknum ];
+			return masked[ this.lastmask ];
 		}
 
 		private createDataBlock( level: Level, version: number, data: Uint8Array )

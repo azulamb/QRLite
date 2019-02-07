@@ -598,19 +598,20 @@ var QRLite;
             return count;
         }
         existsBadPattern(bitarray, width, height) {
-            const bad = [false, true, false, false, false, true, false];
+            const bad = [true, false, true, true, true, false, true];
             for (let y = 0; y < height; ++y) {
                 let s = 0;
                 for (let x = 0; x < width; ++x) {
                     if (bitarray[y * width + x] === bad[s]) {
                         ++s;
                         if (bad.length <= s) {
-                            if (9 < x && bitarray[y * width + x - 7] && bitarray[y * width + x - 6] && bitarray[y * width + x - 5] && bitarray[y * width + x - 4]) {
+                            if (10 <= x && !bitarray[y * width + x - 10] && !bitarray[y * width + x - 9] && !bitarray[y * width + x - 8] && !bitarray[y * width + x - 7]) {
                                 return true;
                             }
-                            if (x + 4 < width && bitarray[y * width + x + 1] && bitarray[y * width + x + 2] && bitarray[y * width + x + 3] && bitarray[y * width + x + 4]) {
+                            if (x + 4 < width && !bitarray[y * width + x + 1] && !bitarray[y * width + x + 2] && !bitarray[y * width + x + 3] && !bitarray[y * width + x + 4]) {
                                 return true;
                             }
+                            s = 5;
                         }
                     }
                     else {
@@ -624,12 +625,13 @@ var QRLite;
                     if (bitarray[y * width + x] === bad[s]) {
                         ++s;
                         if (bad.length <= s) {
-                            if (9 < y && bitarray[(y - 7) * width + x] && bitarray[(y - 6) * width + x] && bitarray[(y - 5) * width + x] && bitarray[(y - 4) * width + x]) {
+                            if (10 <= y && !bitarray[(y - 10) * width + x] && !bitarray[(y - 9) * width + x] && !bitarray[(y - 8) * width + x] && !bitarray[(y - 7) * width + x]) {
                                 return true;
                             }
                             if (y + 4 < width && bitarray[(y + 1) * width + x] && bitarray[(y + 2) * width + x] && bitarray[(y + 3) * width + x] && bitarray[(y + 4) * width + x]) {
                                 return true;
                             }
+                            s = 5;
                         }
                     }
                     else {
@@ -651,6 +653,7 @@ var QRLite;
     }
     class Generator {
         constructor() {
+            this.lastmask = 0;
             this.level = 'Q';
             this.version = 0;
             this.setRating();
@@ -689,6 +692,7 @@ var QRLite;
             this.mask = this.convertMask(this.canvas);
             return this.version;
         }
+        getLastMask() { return this.lastmask; }
         setRating(rating) { this.rating = rating || new DefaultRating(); }
         setData(data) {
             this.rawdata = (typeof data === 'string') ? this.convertStringByte(data) : data;
@@ -745,8 +749,8 @@ var QRLite;
             const datacode = this.createDataCode();
             this.drawData(datacode[0], datacode[1]);
             const masked = this.createMaskedQRCode();
-            const masknum = (typeof option.mask === 'number' && 0 <= option.mask && option.mask <= 7) ? Math.floor(option.mask) : this.selectQRCode(masked);
-            return masked[masknum];
+            this.lastmask = (typeof option.mask === 'number' && 0 <= option.mask && option.mask <= 7) ? Math.floor(option.mask) : this.selectQRCode(masked);
+            return masked[this.lastmask];
         }
         createDataBlock(level, version, data) {
             const byte = new Byte(QRLite.INFO.Data[version][level].DataCode);

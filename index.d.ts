@@ -79,6 +79,7 @@ declare module QRLite {
     class Generator {
         private level;
         private version;
+        private lastmask;
         private rawdata;
         private canvas;
         private mask;
@@ -89,6 +90,7 @@ declare module QRLite {
         setLevel(level: Level): Level;
         getVersion(): number;
         setVersion(version?: number): number;
+        getLastMask(): number;
         setRating(rating?: Rating): void;
         setData(data: string | Uint8Array): Uint8Array | null;
         createDataCode(): Uint8Array[];
