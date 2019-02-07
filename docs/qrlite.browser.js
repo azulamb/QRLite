@@ -480,7 +480,7 @@ var QRLite;
             }
             return cursor;
         }
-        fillEmpty(color = true) {
+        fillEmpty(color = false) {
             const length = this.width * this.height;
             let count = 0;
             for (let i = 0; i < length; ++i) {

@@ -597,7 +597,7 @@ module QRLite
 			return cursor;
 		}
 
-		public fillEmpty( color = true )
+		public fillEmpty( color = false )
 		{
 			const length = this.width * this.height;
 			let count = 0;
