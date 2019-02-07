@@ -9,8 +9,8 @@
   "scripts": {
     "browser": "tsc --p src/browser",
     "nodejs": "tsc --p src/nodejs",
-    "build": "tsc --p test",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc --p test/",
+    "test": "node test/test.js"
   },
   "author": "Hiroki",
   "license": "MIT",

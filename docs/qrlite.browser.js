@@ -8,7 +8,7 @@ var QRLite;
             this.wbit = 0;
         }
         size() { return this.byte.length; }
-        writeByteSize() { return Math.ceil(this.wbit / 8); }
+        countByteSize() { return Math.ceil(this.wbit / 8); }
         get() { return this.byte; }
         addBit(...bitarray) {
             bitarray.forEach((bit) => {
@@ -80,8 +80,8 @@ var QRLite;
             byte.push(1, 0);
             byte.push(0, 0, 0, 0);
             byte.push(0, 0, 0, 0);
-            byte.push(0, 0, 0, 0);
-            byte.push(0, 0, 0, 0);
+            byte.push(196, 14, 0, 0);
+            byte.push(196, 14, 0, 0);
             byte.push(0, 0, 0, 0);
             byte.push(0, 0, 0, 0);
             byte.push(0, 0, 0, 0);
@@ -168,11 +168,11 @@ var QRLite;
             byte[3] = filesize[1];
             byte[4] = filesize[2];
             byte[5] = filesize[3];
-            const datasize = this.numberToLE4Byte(byte.length - 54);
-            byte[42] = datasize[0];
-            byte[43] = datasize[1];
-            byte[44] = datasize[2];
-            byte[45] = datasize[3];
+            const datasize = this.numberToLE4Byte(byte.length - 62);
+            byte[34] = datasize[0];
+            byte[35] = datasize[1];
+            byte[36] = datasize[2];
+            byte[37] = datasize[3];
             return byte;
         }
         numberToLE4Byte(data) {
@@ -373,7 +373,7 @@ var QRLite;
             this.drawPixel(this.width - 3, 8, data[12]);
             this.drawPixel(this.width - 2, 8, data[13]);
             this.drawPixel(this.width - 1, 8, data[14]);
-            this.drawPixel(8, this.height - 8, false);
+            this.drawPixel(8, this.height - 8, true);
             this.drawPixel(8, this.height - 7, data[6]);
             this.drawPixel(8, this.height - 6, data[5]);
             this.drawPixel(8, this.height - 5, data[4]);
@@ -742,7 +742,7 @@ var QRLite;
             byte.addByte(data);
             byte.addBit(0, 0, 0, 0);
             byte.add0Bit();
-            for (let i = byte.writeByteSize(); i < byte.size(); ++i) {
+            for (let i = byte.countByteSize(); i < byte.size(); ++i) {
                 byte.addByteNumber(236);
                 if (byte.size() <= ++i) {
                     break;

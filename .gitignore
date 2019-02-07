@@ -59,6 +59,6 @@ typings/
 
 tmp/
 
-*.bmp
+qr_*.bmp
 
 package-lock.json

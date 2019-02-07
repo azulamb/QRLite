@@ -176,8 +176,8 @@ module QRLite
 			// Datasize.(after)
 			byte.push( 0, 0, 0, 0 );
 			// Option.
-			byte.push( 0, 0, 0, 0 );
-			byte.push( 0, 0, 0, 0 );
+			byte.push( 196, 14, 0, 0 ); // Set the same value as MS Paint.
+			byte.push( 196, 14, 0, 0 ); // Set the same value as MS Paint.
 			byte.push( 0, 0, 0, 0 );
 			byte.push( 0, 0, 0, 0 );
 			// Pallet.
@@ -190,6 +190,8 @@ module QRLite
 			byte[ 11 ] = offset[ 1 ];
 			byte[ 12 ] = offset[ 2 ];
 			byte[ 13 ] = offset[ 3 ];
+
+			// 62 byte.
 
 			// Image data.
 
@@ -277,11 +279,11 @@ module QRLite
 			byte[ 5 ] = filesize[ 3 ];
 
 			// Data size.
-			const datasize = this.numberToLE4Byte( byte.length - 54 );
-			byte[ 42 ] = datasize[ 0 ];
-			byte[ 43 ] = datasize[ 1 ];
-			byte[ 44 ] = datasize[ 2 ];
-			byte[ 45 ] = datasize[ 3 ];
+			const datasize = this.numberToLE4Byte( byte.length - 62 );
+			byte[ 34 ] = datasize[ 0 ];
+			byte[ 35 ] = datasize[ 1 ];
+			byte[ 36 ] = datasize[ 2 ];
+			byte[ 37 ] = datasize[ 3 ];
 
 			return byte;
 		}
@@ -455,7 +457,7 @@ module QRLite
 			this.drawPixel( this.width - 2, 8, data[ 13 ] );
 			this.drawPixel( this.width - 1, 8, data[ 14 ] );
 
-			this.drawPixel( 8, this.height - 8, false ); // Fix
+			this.drawPixel( 8, this.height - 8, true ); // Fix
 
 			this.drawPixel( 8, this.height - 7, data[ 6 ] );
 			this.drawPixel( 8, this.height - 6, data[ 5 ] );
