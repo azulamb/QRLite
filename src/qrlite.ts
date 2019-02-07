@@ -854,7 +854,7 @@ module QRLite
 
 			const min = this.searchVersion( data.length, this.level );
 
-			this.version = ( 0 < version && version < 41 && min <= version ) ? version : min;
+			this.version = ( 1 <= version && version <= 40 && min <= version ) ? version : min;
 
 			if ( this.version <= 0 ) { return 0; }
 
@@ -1126,10 +1126,10 @@ module QRLite
 	    Simple converter
 	========================================*/
 
-	export function convert( data: string, level: Level = 'Q' )
+	export function convert( data: string, option: ConvertOption )
 	{
 		const qr = new Generator();
-		return qr.convert( data, level );
+		return qr.convert( data, option );
 	}
 
 	/*========================================

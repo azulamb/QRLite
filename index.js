@@ -669,7 +669,7 @@ var QRLite;
             version = Math.floor(version);
             const data = this.rawdata || '';
             const min = this.searchVersion(data.length, this.level);
-            this.version = (0 < version && version < 41 && min <= version) ? version : min;
+            this.version = (1 <= version && version <= 40 && min <= version) ? version : min;
             if (this.version <= 0) {
                 return 0;
             }
@@ -864,9 +864,9 @@ var QRLite;
         }
     }
     QRLite.Generator = Generator;
-    function convert(data, level = 'Q') {
+    function convert(data, option) {
         const qr = new Generator();
-        return qr.convert(data, level);
+        return qr.convert(data, option);
     }
     QRLite.convert = convert;
     QRLite.INFO = {

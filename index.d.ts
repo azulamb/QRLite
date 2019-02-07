@@ -107,6 +107,6 @@ declare module QRLite {
         private interleaveArrays;
         private convertMask;
     }
-    function convert(data: string, level?: Level): any;
+    function convert(data: string, option: ConvertOption): BitCanvas;
     const INFO: QRInfo;
 }
