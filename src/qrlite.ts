@@ -11,7 +11,7 @@ module QRLite
 	    Types
 	========================================*/
 
-	export type Level = 'L' | 'M' | 'H' | 'Q';
+	export type Level = 'L' | 'M' | 'Q' | 'H';
 
 	export interface QRLiteRSBlock
 	{
@@ -35,8 +35,8 @@ module QRLite
 			{
 				L: LevelData,
 				M: LevelData,
-				H: LevelData,
 				Q: LevelData,
+				H: LevelData,
 				Alignment: { x: number, y: number }[],
 			},
 		},

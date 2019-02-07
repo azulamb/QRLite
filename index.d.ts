@@ -1,5 +1,5 @@
 declare module QRLite {
-    type Level = 'L' | 'M' | 'H' | 'Q';
+    type Level = 'L' | 'M' | 'Q' | 'H';
     interface QRLiteRSBlock {
         count: number;
         block: number[];
@@ -15,8 +15,8 @@ declare module QRLite {
             [key: number]: {
                 L: LevelData;
                 M: LevelData;
-                H: LevelData;
                 Q: LevelData;
+                H: LevelData;
                 Alignment: {
                     x: number;
                     y: number;

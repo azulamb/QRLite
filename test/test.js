@@ -11,6 +11,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const fs = require("fs");
 const path = require("path");
 const QR = require('../index');
+let DEBUG = false;
+let TESTS = [];
+for (let i = 2; i < process.argv.length; ++i) {
+    switch (process.argv[i]) {
+        case '--debug':
+        case '-d':
+            DEBUG = true;
+            break;
+        default:
+            TESTS.push(process.argv[i]);
+    }
+}
 function Readdir(dir, dironly) {
     return new Promise((resolve, reject) => {
         fs.readdir(dir, (error, files) => {
@@ -56,51 +68,70 @@ function CompareBitmap(src, qr) {
     if (src.length !== qr.length) {
         return false;
     }
-    for (let i = 0; i < src.length; ++i) {
-        if (src[i] !== qr[i]) {
-            return false;
+    if (DEBUG) {
+        let ans = true;
+        for (let i = 0; i < src.length; ++i) {
+            if (src[i] !== qr[i]) {
+                ans = false;
+                console.log(i, src[i], qr[i]);
+            }
+        }
+        return ans;
+    }
+    else {
+        for (let i = 0; i < src.length; ++i) {
+            if (src[i] !== qr[i]) {
+                return false;
+            }
         }
     }
     return true;
 }
 function RunTest(dir) {
     return __awaiter(this, void 0, void 0, function* () {
+        const result = { generation: false, message: '', dir: dir, level: '', version: 0, score: [0], select: -1, answer: -1 };
         const data = yield ReadText(path.join(dir, 'test.txt'));
         const sample = yield ReadFile(path.join(dir, 'sample.bmp'));
         const [num, ver, level] = dir.split('_');
         const qr = new QR.Generator();
-        const newlevel = qr.setLevel(level);
-        console.log('Start:', dir, newlevel, data);
+        result.level = qr.setLevel(level);
         const rawdata = qr.setData(data);
+        result.version = qr.getVersion();
         const datacode = qr.createDataCode();
         qr.drawData(datacode[0], datacode[1]);
         const masked = qr.createMaskedQRCode();
-        console.log(qr.evaluateQRCode(masked));
-        const masknum = qr.selectQRCode(masked);
+        result.score = qr.evaluateQRCode(masked);
+        result.select = qr.selectQRCode(masked);
         fs.writeFileSync(path.join(dir, 'qr_.bmp'), Buffer.from(qr.get().outputBitmapByte(0)));
-        let answer = false;
-        let mask = -1;
         masked.forEach((qr, index) => {
+            if (DEBUG) {
+                console.log('Mask:', index);
+            }
             const compare = CompareBitmap(sample, qr.outputBitmapByte(0));
             fs.writeFileSync(path.join(dir, 'qr_' + index + '.bmp'), Buffer.from(qr.outputBitmapByte(0)));
             if (compare) {
-                mask = index;
+                result.answer = index;
             }
-            answer = answer || compare;
+            result.generation = result.generation || compare;
         });
-        console.log('End:', dir, mask);
-        return answer;
+        if (result.select !== result.answer) {
+            result.message = 'Did not choose the correct answer.';
+        }
+        if (result.answer < 0) {
+            result.message = 'Wrong answer.';
+        }
+        return result;
     });
 }
 function Main(base = './test/') {
     return __awaiter(this, void 0, void 0, function* () {
-        const dirs = yield Readdir(base, true);
-        console.log(dirs);
+        const dirs = 0 < TESTS.length ? TESTS.map((d) => { return path.join(base, d); }) : yield Readdir(base, true);
         for (let i = 0; i < dirs.length; ++i) {
             const result = yield RunTest(dirs[i]);
-            if (!result) {
-                throw 'Error: ' + dirs[i];
+            if (!result.generation) {
+                throw ['Error: ', result.dir, '|', result.version, result.level, '|', result.select, result.answer, result.message].join(' ');
             }
+            console.log(result.message ? 'Wargning:' : 'Success!:', result.dir, '|', result.version, result.level, '|', result.select, result.answer, result.score, result.message);
         }
     });
 }
