@@ -37,6 +37,11 @@ declare module QRLite {
     interface Rating {
         calc: (canvas: BitCanvas) => number;
     }
+    interface ConvertOption {
+        level?: Level;
+        version?: number;
+        mask?: number;
+    }
     class BitCanvas {
         width: number;
         height: number;
@@ -83,6 +88,7 @@ declare module QRLite {
         getLevel(): Level;
         setLevel(level: Level): Level;
         getVersion(): number;
+        setVersion(version?: number): number;
         setRating(rating?: Rating): void;
         setData(data: string | Uint8Array): Uint8Array | null;
         createDataCode(): Uint8Array[];
@@ -90,7 +96,7 @@ declare module QRLite {
         createMaskedQRCode(): BitCanvas[];
         evaluateQRCode(qrcodes: BitCanvas[]): number[];
         selectQRCode(qrcodes: BitCanvas[]): number;
-        convert(datastr: string, level?: Level): BitCanvas;
+        convert(datastr: string, option?: ConvertOption): BitCanvas;
         private createDataBlock;
         private createECBlock;
         private convertStringByte;
@@ -101,6 +107,6 @@ declare module QRLite {
         private interleaveArrays;
         private convertMask;
     }
-    function convert(data: string, level?: Level): BitCanvas;
+    function convert(data: string, level?: Level): any;
     const INFO: QRInfo;
 }

@@ -665,12 +665,13 @@ var QRLite;
             return this.level;
         }
         getVersion() { return this.version; }
-        setRating(rating) { this.rating = rating || new DefaultRating(); }
-        setData(data) {
-            this.rawdata = (typeof data === 'string') ? this.convertStringByte(data) : data;
-            this.version = this.searchVersion(data.length, this.level);
+        setVersion(version = 0) {
+            version = Math.floor(version);
+            const data = this.rawdata || '';
+            const min = this.searchVersion(data.length, this.level);
+            this.version = (0 < version && version < 41 && min <= version) ? version : min;
             if (this.version <= 0) {
-                return null;
+                return 0;
             }
             const w = 17 + this.version * 4;
             const h = w;
@@ -686,6 +687,15 @@ var QRLite;
                 });
             }
             this.mask = this.convertMask(this.canvas);
+            return this.version;
+        }
+        setRating(rating) { this.rating = rating || new DefaultRating(); }
+        setData(data) {
+            this.rawdata = (typeof data === 'string') ? this.convertStringByte(data) : data;
+            this.setVersion();
+            if (this.version <= 0) {
+                return null;
+            }
             return this.rawdata;
         }
         createDataCode() {
@@ -726,13 +736,16 @@ var QRLite;
             }
             return masknum;
         }
-        convert(datastr, level) {
-            const newlevel = this.setLevel(level || this.level);
+        convert(datastr, option = {}) {
+            const newlevel = this.setLevel(option.level || this.level);
             this.setData(datastr);
+            if (typeof option.version === 'number' && 1 <= option.version && option.version <= 40) {
+                this.setVersion(option.version);
+            }
             const datacode = this.createDataCode();
             this.drawData(datacode[0], datacode[1]);
             const masked = this.createMaskedQRCode();
-            const masknum = this.selectQRCode(masked);
+            const masknum = (typeof option.mask === 'number' && 0 <= option.mask && option.mask <= 7) ? Math.floor(option.mask) : this.selectQRCode(masked);
             return masked[masknum];
         }
         createDataBlock(level, version, data) {

@@ -50,6 +50,13 @@ module QRLite
 		calc: ( canvas: BitCanvas ) => number;
 	}
 
+	export interface ConvertOption
+	{
+		level?: Level,
+		version?: number,
+		mask?: number,
+	}
+
 	/*========================================
 	    Support
 	========================================*/
@@ -840,14 +847,16 @@ module QRLite
 
 		public getVersion() { return this.version; }
 
-		public setRating( rating?: Rating ) { this.rating = rating || new DefaultRating(); }
-
-		public setData( data: string | Uint8Array )
+		public setVersion( version: number = 0 )
 		{
-			this.rawdata = ( typeof data === 'string' ) ? this.convertStringByte( data ) : data;
-			this.version = this.searchVersion( data.length, this.level );
+			version = Math.floor( version );
+			const data = this.rawdata || '';
 
-			if ( this.version <= 0 ) { return null; }
+			const min = this.searchVersion( data.length, this.level );
+
+			this.version = ( 0 < version && version < 41 && min <= version ) ? version : min;
+
+			if ( this.version <= 0 ) { return 0; }
 
 			// version1 = 21, 2 = 25, ...
 			const w = 17 + this.version * 4;
@@ -868,6 +877,18 @@ module QRLite
 
 			// Get writable mask. now undefined = writable = true.
 			this.mask = this.convertMask( this.canvas );
+			
+			return this.version;
+		}
+
+		public setRating( rating?: Rating ) { this.rating = rating || new DefaultRating(); }
+
+		public setData( data: string | Uint8Array )
+		{
+			this.rawdata = ( typeof data === 'string' ) ? this.convertStringByte( data ) : data;
+			this.setVersion();
+
+			if ( this.version <= 0 ) { return null; }
 
 			return this.rawdata;
 		}
@@ -924,11 +945,16 @@ module QRLite
 			return masknum;
 		}
 
-		public convert( datastr: string, level?: Level )
+		public convert( datastr: string, option: ConvertOption = {} )
 		{
-			const newlevel = this.setLevel( level || this.level );
+			const newlevel = this.setLevel( option.level || this.level );
 
 			this.setData( datastr );
+
+			if ( typeof option.version === 'number' && 1 <= option.version && option.version <= 40 )
+			{
+				this.setVersion( option.version );
+			}
 
 			// [ 0 ] = Data block, [ 1 ] = EC Block
 			const datacode = this.createDataCode();
@@ -937,7 +963,7 @@ module QRLite
 
 			const masked = this.createMaskedQRCode();
 
-			const masknum = this.selectQRCode( masked );
+			const masknum = ( typeof option.mask === 'number' && 0 <= option.mask && option.mask <= 7 ) ? Math.floor( option.mask ) : this.selectQRCode( masked );
 
 			return masked[ masknum ];
 		}
