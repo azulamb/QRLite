@@ -1,7 +1,10 @@
 var QRLite;
 (function (QRLite) {
-    const W = 0;
-    const B = 1;
+    QRLite.version = '0.1.1';
+    QRLite.White = false;
+    QRLite.Black = true;
+    const W = QRLite.White;
+    const B = QRLite.Black;
     class Byte {
         constructor(bytesize) {
             this.byte = new Uint8Array(bytesize);
@@ -12,7 +15,7 @@ var QRLite;
         get() { return this.byte; }
         addBit(...bitarray) {
             bitarray.forEach((bit) => {
-                if (bit) {
+                if (!!bit === B) {
                     this.byte[Math.floor(this.wbit / 8)] |= 1 << (7 - this.wbit % 8);
                 }
                 ++this.wbit;
@@ -240,71 +243,71 @@ var QRLite;
             return this;
         }
         drawQRInfo(level, mask) {
-            const data = [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true];
+            const data = [B, B, B, B, B, B, B, B, B, B, B, B, B, B, B];
             switch (level) {
                 case 'L':
-                    data[0] = false;
-                    data[1] = true;
+                    data[0] = W;
+                    data[1] = B;
                     break;
                 case 'M':
-                    data[0] = false;
-                    data[1] = false;
+                    data[0] = W;
+                    data[1] = W;
                     break;
                 case 'Q':
-                    data[0] = true;
-                    data[1] = true;
+                    data[0] = B;
+                    data[1] = B;
                     break;
                 case 'H':
-                    data[0] = true;
-                    data[1] = false;
+                    data[0] = B;
+                    data[1] = W;
                     break;
             }
             switch (mask) {
                 case 0:
-                    data[2] = false;
-                    data[3] = false;
-                    data[4] = false;
+                    data[2] = W;
+                    data[3] = W;
+                    data[4] = W;
                     break;
                 case 1:
-                    data[2] = false;
-                    data[3] = false;
-                    data[4] = true;
+                    data[2] = W;
+                    data[3] = W;
+                    data[4] = B;
                     break;
                 case 2:
-                    data[2] = false;
-                    data[3] = true;
-                    data[4] = false;
+                    data[2] = W;
+                    data[3] = B;
+                    data[4] = W;
                     break;
                 case 3:
-                    data[2] = false;
-                    data[3] = true;
-                    data[4] = true;
+                    data[2] = W;
+                    data[3] = B;
+                    data[4] = B;
                     break;
                 case 4:
-                    data[2] = true;
-                    data[3] = false;
-                    data[4] = false;
+                    data[2] = B;
+                    data[3] = W;
+                    data[4] = W;
                     break;
                 case 5:
-                    data[2] = true;
-                    data[3] = false;
-                    data[4] = true;
+                    data[2] = B;
+                    data[3] = W;
+                    data[4] = B;
                     break;
                 case 6:
-                    data[2] = true;
-                    data[3] = true;
-                    data[4] = false;
+                    data[2] = B;
+                    data[3] = B;
+                    data[4] = W;
                     break;
                 case 7:
-                    data[2] = true;
-                    data[3] = true;
-                    data[4] = true;
+                    data[2] = B;
+                    data[3] = B;
+                    data[4] = B;
                     break;
             }
             if (level !== undefined && mask !== undefined) {
                 const k = [
                     data[0], data[1], data[2], data[3], data[4],
-                    false, false, false, false, false, false, false, false, false, false,
+                    W, W, W, W, W, W, W, W, W, W,
                 ];
                 let a = 0;
                 if (data[0]) {
@@ -322,7 +325,7 @@ var QRLite;
                 else if (data[4]) {
                     a = 0;
                 }
-                const g = [true, false, true, false, false, true, true, false, true, true, true];
+                const g = [B, W, B, W, W, B, B, W, B, B, B];
                 for (let i = 0; i < 5; ++i) {
                     if (!k[i]) {
                         continue;
@@ -334,21 +337,21 @@ var QRLite;
                 for (let i = 5; i < data.length; ++i) {
                     data[i] = k[i];
                 }
-                data[0] = data[0] !== true;
-                data[1] = data[1] !== false;
-                data[2] = data[2] !== true;
-                data[3] = data[3] !== false;
-                data[4] = data[4] !== true;
-                data[5] = data[5] !== false;
-                data[6] = data[6] !== false;
-                data[7] = data[7] !== false;
-                data[8] = data[8] !== false;
-                data[9] = data[9] !== false;
-                data[10] = data[10] !== true;
-                data[11] = data[11] !== false;
-                data[12] = data[12] !== false;
-                data[13] = data[13] !== true;
-                data[14] = data[14] !== false;
+                data[0] = data[0] !== B;
+                data[1] = data[1] !== W;
+                data[2] = data[2] !== B;
+                data[3] = data[3] !== W;
+                data[4] = data[4] !== B;
+                data[5] = data[5] !== W;
+                data[6] = data[6] !== W;
+                data[7] = data[7] !== W;
+                data[8] = data[8] !== W;
+                data[9] = data[9] !== W;
+                data[10] = data[10] !== B;
+                data[11] = data[11] !== W;
+                data[12] = data[12] !== W;
+                data[13] = data[13] !== B;
+                data[14] = data[14] !== W;
             }
             this.drawPixel(8, 0, data[14]);
             this.drawPixel(8, 1, data[13]);
@@ -373,7 +376,7 @@ var QRLite;
             this.drawPixel(this.width - 3, 8, data[12]);
             this.drawPixel(this.width - 2, 8, data[13]);
             this.drawPixel(this.width - 1, 8, data[14]);
-            this.drawPixel(8, this.height - 8, true);
+            this.drawPixel(8, this.height - 8, B);
             this.drawPixel(8, this.height - 7, data[6]);
             this.drawPixel(8, this.height - 6, data[5]);
             this.drawPixel(8, this.height - 5, data[4]);
@@ -415,7 +418,7 @@ var QRLite;
                     this.drawPixel(x + a, y + b, !!pattern[b * w + a]);
                 }
             }
-            this.drawPixel(8, this.height - 8, false);
+            this.drawPixel(8, this.height - 8, W);
             return this;
         }
         drawQRByte(byte, cursor) {
@@ -480,7 +483,7 @@ var QRLite;
             }
             return cursor;
         }
-        fillEmpty(color = false) {
+        fillEmpty(color = W) {
             const length = this.width * this.height;
             let count = 0;
             for (let i = 0; i < length; ++i) {
@@ -550,7 +553,7 @@ var QRLite;
             if (this.existsBadPattern(bitarray, canvas.width, canvas.height)) {
                 point += 40;
             }
-            const black = this.countBitarray(bitarray, false);
+            const black = this.countBitarray(bitarray, W);
             const per = Math.floor(black * 100 / bitarray.length);
             let k = Math.abs(per - 50);
             while (5 <= k) {
@@ -607,7 +610,7 @@ var QRLite;
             return count;
         }
         existsBadPattern(bitarray, width, height) {
-            const bad = [true, false, true, true, true, false, true];
+            const bad = [B, W, B, B, B, W, B];
             for (let y = 0; y < height; ++y) {
                 let s = 0;
                 for (let x = 0; x < width; ++x) {

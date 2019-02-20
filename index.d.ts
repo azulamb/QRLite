@@ -1,4 +1,7 @@
 declare module QRLite {
+    const version = "0.1.1";
+    const White = false;
+    const Black = true;
     type Level = 'L' | 'M' | 'Q' | 'H';
     interface QRLiteRSBlock {
         count: number;

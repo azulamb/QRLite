@@ -4,8 +4,11 @@ QRLite ... 8bit mode QRCode Generator
 
 module QRLite
 {
-	const W = 0;
-	const B = 1;
+	export const version = '0.1.1';
+	export const White = false;
+	export const Black = true;
+	const W = White;
+	const B = Black;
 
 	/*========================================
 	    Types
@@ -82,7 +85,7 @@ module QRLite
 		{
 			bitarray.forEach( ( bit ) =>
 			{
-				if ( bit ) // bit == true ... Black
+				if ( !!bit === B ) // bit == true ... Black
 				{
 					this.byte[ Math.floor( this.wbit / 8 ) ] |= 1 << ( 7 - this.wbit % 8 );
 				}
@@ -377,26 +380,26 @@ module QRLite
 
 		public drawQRInfo( level?: Level, mask?: number )
 		{
-			const data = [ true, true, true, true, true, true, true, true, true, true, true, true, true, true, true ];
+			const data = [ B, B, B, B, B, B, B, B, B, B, B, B, B, B, B ];
 
 			switch ( level )
 			{
-				case 'L': data[ 0 ] = false; data[ 1 ] = true; break;
-				case 'M': data[ 0 ] = false; data[ 1 ] = false; break;
-				case 'Q': data[ 0 ] = true;  data[ 1 ] = true; break;
-				case 'H': data[ 0 ] = true;  data[ 1 ] = false; break;
+				case 'L': data[ 0 ] = W; data[ 1 ] = B; break;
+				case 'M': data[ 0 ] = W; data[ 1 ] = W; break;
+				case 'Q': data[ 0 ] = B; data[ 1 ] = B; break;
+				case 'H': data[ 0 ] = B; data[ 1 ] = W; break;
 			}
 
 			switch ( mask )
 			{
-				case 0: data[ 2 ] = false; data[ 3 ] = false; data[ 4 ] = false; break;
-				case 1: data[ 2 ] = false; data[ 3 ] = false; data[ 4 ] = true; break;
-				case 2: data[ 2 ] = false; data[ 3 ] = true;  data[ 4 ] = false; break;
-				case 3: data[ 2 ] = false; data[ 3 ] = true;  data[ 4 ] = true; break;
-				case 4: data[ 2 ] = true;  data[ 3 ] = false; data[ 4 ] = false; break;
-				case 5: data[ 2 ] = true;  data[ 3 ] = false; data[ 4 ] = true; break;
-				case 6: data[ 2 ] = true;  data[ 3 ] = true;  data[ 4 ] = false; break;
-				case 7: data[ 2 ] = true;  data[ 3 ] = true;  data[ 4 ] = true; break;
+				case 0: data[ 2 ] = W; data[ 3 ] = W; data[ 4 ] = W; break;
+				case 1: data[ 2 ] = W; data[ 3 ] = W; data[ 4 ] = B; break;
+				case 2: data[ 2 ] = W; data[ 3 ] = B; data[ 4 ] = W; break;
+				case 3: data[ 2 ] = W; data[ 3 ] = B; data[ 4 ] = B; break;
+				case 4: data[ 2 ] = B; data[ 3 ] = W; data[ 4 ] = W; break;
+				case 5: data[ 2 ] = B; data[ 3 ] = W; data[ 4 ] = B; break;
+				case 6: data[ 2 ] = B; data[ 3 ] = B; data[ 4 ] = W; break;
+				case 7: data[ 2 ] = B; data[ 3 ] = B; data[ 4 ] = B; break;
 			}
 
 			if ( level !== undefined && mask !== undefined )
@@ -404,12 +407,12 @@ module QRLite
 				const k =
 				[
 					data[ 0 ], data[ 1 ], data[ 2 ], data[ 3 ], data[ 4 ],
-					false, false, false, false, false, false, false, false, false, false,
+					W, W, W, W, W, W, W, W, W, W,
 				];
 				let a = 0;
 				if ( data[ 0 ] ) { a = 4; } else if ( data[ 1 ] ) { a = 3; } else if ( data[ 2 ] ) { a = 2; } else if ( data[ 3 ] ) { a = 1; } else if ( data[ 4 ] ) { a = 0; }
 
-				const g = [ true, false, true, false, false, true, true, false, true, true, true ];
+				const g = [ B, W, B, W, W, B, B, W, B, B, B ];
 
 				for ( let i = 0 ; i < 5 ; ++i )
 				{
@@ -420,21 +423,21 @@ module QRLite
 					}
 				}
 				for ( let i = 5 ; i < data.length ; ++i ) { data[ i ] = k[ i ]; }
-				data[ 0 ]  = data[ 0 ]  !== true;  // 1
-				data[ 1 ]  = data[ 1 ]  !== false; // 0
-				data[ 2 ]  = data[ 2 ]  !== true;  // 1
-				data[ 3 ]  = data[ 3 ]  !== false; // 0
-				data[ 4 ]  = data[ 4 ]  !== true;  // 1
-				data[ 5 ]  = data[ 5 ]  !== false; // 0
-				data[ 6 ]  = data[ 6 ]  !== false; // 0
-				data[ 7 ]  = data[ 7 ]  !== false; // 0
-				data[ 8 ]  = data[ 8 ]  !== false; // 0
-				data[ 9 ]  = data[ 9 ]  !== false; // 0
-				data[ 10 ] = data[ 10 ] !== true;  // 1
-				data[ 11 ] = data[ 11 ] !== false; // 0
-				data[ 12 ] = data[ 12 ] !== false; // 0
-				data[ 13 ] = data[ 13 ] !== true;  // 1
-				data[ 14 ] = data[ 14 ] !== false; // 0
+				data[ 0 ]  = data[ 0 ]  !== B; // 1
+				data[ 1 ]  = data[ 1 ]  !== W; // 0
+				data[ 2 ]  = data[ 2 ]  !== B; // 1
+				data[ 3 ]  = data[ 3 ]  !== W; // 0
+				data[ 4 ]  = data[ 4 ]  !== B; // 1
+				data[ 5 ]  = data[ 5 ]  !== W; // 0
+				data[ 6 ]  = data[ 6 ]  !== W; // 0
+				data[ 7 ]  = data[ 7 ]  !== W; // 0
+				data[ 8 ]  = data[ 8 ]  !== W; // 0
+				data[ 9 ]  = data[ 9 ]  !== W; // 0
+				data[ 10 ] = data[ 10 ] !== B; // 1
+				data[ 11 ] = data[ 11 ] !== W; // 0
+				data[ 12 ] = data[ 12 ] !== W; // 0
+				data[ 13 ] = data[ 13 ] !== B; // 1
+				data[ 14 ] = data[ 14 ] !== W; // 0
 			}
 
 			this.drawPixel( 8, 0, data[ 14 ] );
@@ -464,7 +467,7 @@ module QRLite
 			this.drawPixel( this.width - 2, 8, data[ 13 ] );
 			this.drawPixel( this.width - 1, 8, data[ 14 ] );
 
-			this.drawPixel( 8, this.height - 8, true ); // Fix
+			this.drawPixel( 8, this.height - 8, B ); // Fix
 
 			this.drawPixel( 8, this.height - 7, data[ 6 ] );
 			this.drawPixel( 8, this.height - 6, data[ 5 ] );
@@ -520,7 +523,7 @@ module QRLite
 					this.drawPixel( x + a, y + b, !!pattern[ b * w + a ] );
 				}
 			}
-			this.drawPixel( 8, this.height - 8, false );
+			this.drawPixel( 8, this.height - 8, W );
 
 			return this;
 		}
@@ -604,7 +607,7 @@ module QRLite
 			return cursor;
 		}
 
-		public fillEmpty( color = false )
+		public fillEmpty( color = W )
 		{
 			const length = this.width * this.height;
 			let count = 0;
@@ -695,7 +698,7 @@ module QRLite
 			}
 
 			// 4.
-			const black = this.countBitarray( bitarray, false );
+			const black = this.countBitarray( bitarray, W );
 			const per = Math.floor( black * 100 / bitarray.length );
 			let k = Math.abs( per - 50 );
 			while ( 5 <= k )
@@ -770,7 +773,7 @@ module QRLite
 
 		private existsBadPattern( bitarray: boolean[], width: number, height: number )
 		{
-			const bad = [ true, false, true, true, true, false, true ];
+			const bad = [ B, W, B, B, B, W, B ];
 
 			for ( let y = 0 ; y < height ; ++y )
 			{
