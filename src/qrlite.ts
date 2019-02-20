@@ -641,8 +641,13 @@ module QRLite
 			return true;
 		}
 
-		public print( white: string = '██', black: string = '  ', none: string = '--' )
+		public sprint( option?: { white?: string, black?: string, none?: string, newline?: string } )
 		{
+			const white = option && option.white !== undefined ? option.white : '██';
+			const black = option && option.black !== undefined ? option.black : '  ';
+			const none = option && option.none !== undefined ? option.none : '--';
+			const newline = option && option.newline !== undefined ? option.newline : '\n';
+			const lines: string[] = [];
 			for( let y = 0 ; y < this.height ; ++y )
 			{
 				const line: string[] = [];
@@ -650,8 +655,14 @@ module QRLite
 				{
 					line.push( this.bitarray[ y * this.height + x ] === undefined ? none : ( this.bitarray[ y * this.height + x ] ? black : white ) );
 				}
-				console.log( line.join( '' ) );
+				lines.push( line.join( '' ) );
 			}
+			return lines.join( newline );
+		}
+
+		public print( white: string = '██', black: string = '  ', none: string = '--' )
+		{
+			console.log( this.sprint( { white: white, black: black, none: none } ) );
 		}
 
 		public outputBitmapByte( frame: number = 1 )

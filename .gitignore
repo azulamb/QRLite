@@ -60,5 +60,6 @@ typings/
 tmp/
 
 qr_*.bmp
+qr_*.txt
 
 package-lock.json

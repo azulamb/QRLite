@@ -515,14 +515,23 @@ var QRLite;
             }
             return true;
         }
-        print(white = '██', black = '  ', none = '--') {
+        sprint(option) {
+            const white = option && option.white !== undefined ? option.white : '██';
+            const black = option && option.black !== undefined ? option.black : '  ';
+            const none = option && option.none !== undefined ? option.none : '--';
+            const newline = option && option.newline !== undefined ? option.newline : '\n';
+            const lines = [];
             for (let y = 0; y < this.height; ++y) {
                 const line = [];
                 for (let x = 0; x < this.width; ++x) {
                     line.push(this.bitarray[y * this.height + x] === undefined ? none : (this.bitarray[y * this.height + x] ? black : white));
                 }
-                console.log(line.join(''));
+                lines.push(line.join(''));
             }
+            return lines.join(newline);
+        }
+        print(white = '██', black = '  ', none = '--') {
+            console.log(this.sprint({ white: white, black: black, none: none }));
         }
         outputBitmapByte(frame = 1) {
             const bitmap = new MonochromeBitmap();

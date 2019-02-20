@@ -73,6 +73,12 @@ declare module QRLite {
         fillEmpty(color?: boolean): number;
         private existsEmpty;
         private noEmptyLine;
+        sprint(option?: {
+            white?: string;
+            black?: string;
+            none?: string;
+            newline?: string;
+        }): string;
         print(white?: string, black?: string, none?: string): void;
         outputBitmapByte(frame?: number): number[];
     }

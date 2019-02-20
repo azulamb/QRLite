@@ -12,12 +12,17 @@ const fs = require("fs");
 const path = require("path");
 const QR = require('../index');
 let DEBUG = false;
+let BINARY = false;
 let TESTS = [];
 for (let i = 2; i < process.argv.length; ++i) {
     switch (process.argv[i]) {
         case '--debug':
         case '-d':
             DEBUG = true;
+            break;
+        case '--binary':
+        case '-b':
+            BINARY = true;
             break;
         default:
             TESTS.push(process.argv[i]);
@@ -64,6 +69,49 @@ function ReadFile(file) {
         return array;
     });
 }
+function CompareText(src, qr) {
+    if (src.length !== qr.length) {
+        return false;
+    }
+    return src.replace(/\r|\n/g, '') === qr.replace(/\r|\n/g, '');
+}
+function RunTest(dir) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const result = { generation: false, message: '', dir: dir, level: '', version: 0, score: [0], select: -1, answer: -1 };
+        const data = yield ReadText(path.join(dir, 'test.txt'));
+        const sample = yield ReadText(path.join(dir, 'sample.txt'));
+        const [num, ver, level] = dir.split('_');
+        const qr = new QR.Generator();
+        result.level = qr.setLevel(level);
+        const rawdata = qr.setData(data);
+        result.version = qr.getVersion();
+        const datacode = qr.createDataCode();
+        qr.drawData(datacode[0], datacode[1]);
+        const masked = qr.createMaskedQRCode();
+        result.score = qr.evaluateQRCode(masked);
+        result.select = qr.selectQRCode(masked);
+        const option = { black: '██', white: '  ' };
+        fs.writeFileSync(path.join(dir, 'qr_.txt'), qr.get().sprint(option));
+        masked.forEach((qr, index) => {
+            if (DEBUG) {
+                console.log('Mask:', index);
+            }
+            const compare = CompareText(sample, qr.sprint(option));
+            fs.writeFileSync(path.join(dir, 'qr_' + index + '.txt'), qr.sprint(option));
+            if (compare) {
+                result.answer = index;
+            }
+            result.generation = result.generation || compare;
+        });
+        if (result.select !== result.answer) {
+            result.message = 'Did not choose the correct answer.';
+        }
+        if (result.answer < 0) {
+            result.message = 'Wrong answer.';
+        }
+        return result;
+    });
+}
 function CompareBitmap(src, qr) {
     if (src.length !== qr.length) {
         return false;
@@ -87,7 +135,7 @@ function CompareBitmap(src, qr) {
     }
     return true;
 }
-function RunTest(dir) {
+function RunTestBMP(dir) {
     return __awaiter(this, void 0, void 0, function* () {
         const result = { generation: false, message: '', dir: dir, level: '', version: 0, score: [0], select: -1, answer: -1 };
         const data = yield ReadText(path.join(dir, 'test.txt'));
@@ -127,7 +175,7 @@ function Main(base = './test/') {
     return __awaiter(this, void 0, void 0, function* () {
         const dirs = 0 < TESTS.length ? TESTS.map((d) => { return path.join(base, d); }) : yield Readdir(base, true);
         for (let i = 0; i < dirs.length; ++i) {
-            const result = yield RunTest(dirs[i]);
+            const result = yield (BINARY ? RunTestBMP(dirs[i]) : RunTest(dirs[i]));
             if (!result.generation) {
                 throw ['Error: ', result.dir, '|', result.version, result.level, '|', result.select, result.answer, result.message].join(' ');
             }
