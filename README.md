@@ -10,7 +10,7 @@ QRコードの勉強を兼ねてTypeScriptのみで作成したQRコード生成
 
 ## Output Bitmap
 
-```
+``` js
 function OutputBitmapFile( name, canvas, frame ) {
 	if ( frame === undefined ) { frame = 4; }
 	var fs = require('fs');
@@ -33,7 +33,7 @@ QRコードの生成部分はこのQRLiteを使い、WebComponentsを使って�
 以下のようにしてQRコードのビットデータを作成しています。（中身はほぼ`QRLite.Generator.convert`でやっていること。）
 途中で結果を出力などしていけばいろいろ見れるはず。
 
-```
+``` js
 const qr = new QRLite.Generator();
 // Set level.
 qr.setLevel( 'Q' );
@@ -209,6 +209,18 @@ QRコードのデータを書き込みます。
 
 基本的にはQRコードのシンボルなどを全て描画した後使うメソッドです。
 
+### public sprint( option?: { white?: string, black?: string, none?: string, newline?: string } )
+
+現在のQRコードを文字列にして返します。
+
+初期設定では白を `██`、黒を `  `、空を `--`、改行を `\n` で表示します。
+
+背景黒、文字色白のターミナルの場合、きれいなQRコードを出力するはずです。
+
+白黒空改行はそれぞれ引数に与えれば変更可能です。
+
+以下の `print()` は内部的にはこの `sprint()` を利用しています。
+
 ### print( white: string = '██', black: string = '  ', none: string = '--' )
 
 `console.log` に現在のQRコードを出力します。
@@ -227,3 +239,88 @@ Node.jsであれば `Buffer.from( canvas.outputBitmapByte( frame ) )` のよう�
 
 何も指定しない場合はQRコードの周りに1pxの白枠を追加します。
 もし白枠を必要としない場合は0を与えてください。
+
+# Test
+
+## Build
+
+一応ビルド済みです。
+
+``` sh
+npm run build
+```
+
+## Run
+
+以下コマンドで普通の全テストが可能です。
+
+``` sh
+npm run test
+```
+
+以下のように個別対応やモード指定も可能です。
+
+``` sh
+npm run test -- OPTION FILES...
+```
+
+* OPTION
+  * `--binary`
+  * `-b`
+    * バイナリモード（モノクロビットマップ）でテストします。
+  * `--debug`
+  * `-d`
+    * デバッグモードでテストします。いつもより出力が多いです。
+* FILES
+  * テストするフォルダを指定すると、そのテストだけ行います。
+    * `npm run test -- 0000_1_H`
+  * 複数指定も可能です。指定がない場合は全てのテストを行います。
+
+## Add
+
+### Base
+
+テストの追加はバイナリとテキスト両方可能です。
+
+基本構造は以下のようになっています。
+
+```text
+test/
+  NNNN_VERSION_LEVEL/
+    test.txt
+    sample.png
+    sample.bmp or sample.txt
+```
+
+* NNNN
+  * テストの番号を決めるだけのものです。とりあえず `0000` から始めています。
+* VERSION
+  * QRコードのバージョンで、`1` ～ `40`です。
+* LEVEL
+  * QRコードのレベルで、`L` `M` `Q` `H` のどれかです。
+* test.txt
+  * QRコードを生成するための文字列です。
+* sample.png
+  * テストの正解になるQRコードのサンプルです。テストには使われません。完全なサンプルです。
+
+#### Binary
+
+Windowsのモノクロビットマップでのテストを行います。
+正解ファイルは `sample.bmp` です。
+
+QRコードの余白を取り除き、1マス1pxにした最小QRコードが正解データとして使われます。
+
+また、Microsoft ペイントでは、最小状態でモノクロビットマップに変換すると、QRコードが破壊されます。
+そのため、一度2,4倍などの大きめのQRコードをモノクロビットマップに変換した後、リサイズしてください。
+
+#### Text
+
+テキスト出力したQRコードでテストを行います。改行コードは無視するような作りになっているはずです。
+正解ファイルは `sample.txt` です。
+
+QRコードの余白を取り除き、白は [`  `] 黒は [`██`] にした最小QRコードが正解データとして使われます。
+注意事項として、デフォルトの設定で `print` した時と白黒が逆になっています。
+（理由は後述するコンバーターで見やすくするのと、白黒入れ替えのテストも兼ねている。）
+
+一応きれいなQRコードを最小のテキストQRコードに変換するプログラムも用意されています。
+ブラウザで `docs/index.html` を開くか、https://hirokimiyaoka.github.io/QRLite/ にアクセスしてください。
