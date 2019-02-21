@@ -1,26 +1,33 @@
 # QRLite
 
-QRコードの勉強を兼ねてTypeScriptのみで作成したQRコード生成機です。
+QRコードの勉強を兼ねてTypeScriptのみで作成したQRコード生成機です。他モジュールへの依存も型定義の`@types/node`を除いてありません。
 （簡易版ということでとりあえず半角英数の文字列のみOKな8bit版を生成可能。）
 
 勉強も兼ねているので、マスク処理前、マスク処理した8種類のデータも取得できるようにしている他、モノクロビットマップのバイナリデータを出力可能です。
 （実際にファイルとして出力する場合、fsなどで出力してください。）
 
+# Install
+
+```sh
+npm i HirokiMiyaoka/QRLite
+```
+
 # Sample
 
-## Output Bitmap
+## Output Bitmap(Node.js sample)
 
 ``` js
+const QRLite = require( 'qrlite' );
 function OutputBitmapFile( name, canvas, frame ) {
 	if ( frame === undefined ) { frame = 4; }
 	var fs = require('fs');
 	var buf = Buffer.from( canvas.outputBitmapByte( frame ) );
-	fs.writeFileSync(name, buf);
+	fs.writeFileSync( name, buf );
 }
 OutputBitmapFile( 'test.bmp', QRLite.convert( 'test' ) );
 ```
 
-## QRCode WebComponents
+## QRCode WebComponents(Browser sample)
 
 https://github.com/HirokiMiyaoka/QRCodeComponent
 
@@ -35,6 +42,7 @@ QRコードの生成部分はこのQRLiteを使い、WebComponentsを使って�
 
 ``` js
 const qr = new QRLite.Generator();
+
 // Set level.
 qr.setLevel( 'Q' );
 
@@ -53,6 +61,7 @@ const masked = qr.createMaskedQRCode();
 
 // Print QRCode points.
 // console.log( qr.evaluateQRCode( masked ) );
+
 // Select mask number.
 const masknum = qr.selectQRCode( masked );
 
@@ -286,10 +295,11 @@ npm run test -- OPTION FILES...
 
 ```text
 test/
-  NNNN_VERSION_LEVEL/
-    test.txt
-    sample.png
-    sample.bmp or sample.txt
+  NNNN_VERSION_LEVEL/ ... Test case
+    test.txt          ... QRCode text.
+    sample.png        ... Sample for human.
+    sample.bmp        ... Binary mode sample.
+    sample.txt        ... Text mode sample.
 ```
 
 * NNNN
@@ -311,7 +321,7 @@ Windowsのモノクロビットマップでのテストを行います。
 QRコードの余白を取り除き、1マス1pxにした最小QRコードが正解データとして使われます。
 
 また、Microsoft ペイントでは、最小状態でモノクロビットマップに変換すると、QRコードが破壊されます。
-そのため、一度2,4倍などの大きめのQRコードをモノクロビットマップに変換した後、リサイズしてください。
+そのため、一度2倍や4倍などの大きめのQRコードをモノクロビットマップに変換した後、リサイズしてください。
 
 #### Text
 
@@ -324,3 +334,12 @@ QRコードの余白を取り除き、白は [`  `] 黒は [`██`] にした�
 
 一応きれいなQRコードを最小のテキストQRコードに変換するプログラムも用意されています。
 ブラウザで `docs/index.html` を開くか、https://hirokimiyaoka.github.io/QRLite/ にアクセスしてください。
+
+# Other
+
+## TODO
+
+* mjs出力
+  * できればES Moduleに対応したい。
+* @types/qrlite
+  * どうすればいいのか試行錯誤中。

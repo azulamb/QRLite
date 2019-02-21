@@ -1,8 +1,10 @@
 {
+  "private": true,
   "name": "qrlite",
   "version": "0.1.1",
   "description": "",
-  "main": "index.js",
+  "main": "./index.js",
+  "types": "./src/qrlite.d.ts",
   "directories": {
     "doc": "docs"
   },
@@ -14,6 +16,14 @@
   },
   "author": "Hiroki",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HirokiMiyaoka/QRLite.git"
+  },
+  "bugs": {
+    "url": "https://github.com/HirokiMiyaoka/QRLite/issues"
+  },
+  "homepage": "https://github.com/HirokiMiyaoka/QRLite",
   "devDependencies": {
     "@types/node": "^9.4.7"
   }

@@ -2,6 +2,7 @@
 	"compilerOptions": {
 		"outFile": "../../docs/qrlite.browser.js",
 		"module": "system",
+		"declaration": true,
 		"moduleResolution": "node",
 		"target": "es6",
 		"lib": [ "dom", "es2017" ],
