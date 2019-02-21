@@ -1,3 +1,3 @@
 /// <reference path="../qrlite.ts" />
 
-module.exports = QRLite;
+module.exports = <QRLite>require( '../qrlite' );

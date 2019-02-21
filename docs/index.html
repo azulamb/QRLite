@@ -3,7 +3,8 @@
 <head>
 	<meta charset="utf-8">
 	<title>Convert QR image to text.</title>
-	<style></style>
+	<style>section{display:block;position:absolute;top:0;left:0;width:100%;height:100%;overflow:auto;}</style>
+	<script src="./qrlite.js"></script>
 	<script>
 class QRFormatter
 {
@@ -238,6 +239,11 @@ class QRFormatter
 
 function Init()
 {
+	document.getElementById( 'show' ).addEventListener( 'click', () =>
+	{
+		document.getElementById( 'converter' ).style.display = 'block';
+		document.getElementById( 'top' ).style.display = 'none';
+	} );
 	const drop = document.getElementById( 'drop' );
 	const result = document.getElementById( 'result' );
 	const downnload = document.getElementById( 'download' );
@@ -262,21 +268,45 @@ function Init()
 	{
 		downnload.href = window.URL.createObjectURL( new Blob( [ result.value ], { type : 'text/plain' } ) );
 	} );
+
+	setTimeout( () =>
+	{
+		document.getElementById( 'version' ).textContent = QRLite.Version;
+	}, 0 );
 }
 
+console.log( QRLite );
 document.addEventListener( 'DOMContentLoaded', Init );
 	</script>
 </head>
 <body style="height:100%;margin:0;background-color:#c3c3c3;">
-	<div id="drop" style="width:100%;height:50%;box-sizing:border-box;border:0.5rem solid pink;position:relative;">
-		<canvas id="origin" width="1" height="1"></canvas>
-		<canvas id="monochrome" width="1" height="1"></canvas>
-		<canvas id="minimum" width="1" height="1"></canvas>
-		<div style="position:absolute;line-height:1em;height:1em;margin:auto;top:0;bottom:0;left:0;right:0;pointer-events:none;text-align:center;">Drop image file.</div>
-	</div>
-	<div style="width:100%;height:50%;box-sizing:border-box;padding:0 0 2rem;position:absolute;">
-		<textarea id="result" style="display:block;width:100%;height:100%;box-sizing:border-box;font-size:8px;"></textarea>
-		<a id="download" download="sample.txt" style="display:block;width:100%;height:2rem;line-height:2rem;text-align:center;position:absolute;bottom:0;text-decoration:none;cursor:pointer;">Download</a>
-	</div>
+	<section id="converter" style="display:none;">
+		<div id="drop" style="width:100%;height:50%;box-sizing:border-box;border:0.5rem solid pink;position:relative;">
+			<canvas id="origin" width="1" height="1"></canvas>
+			<canvas id="monochrome" width="1" height="1"></canvas>
+			<canvas id="minimum" width="1" height="1"></canvas>
+			<div style="position:absolute;line-height:1em;height:1em;margin:auto;top:0;bottom:0;left:0;right:0;pointer-events:none;text-align:center;">Drop image file.</div>
+		</div>
+		<div style="width:100%;height:50%;box-sizing:border-box;padding:0 0 2rem;position:absolute;">
+			<textarea id="result" style="display:block;width:100%;height:100%;box-sizing:border-box;font-size:8px;"></textarea>
+			<a id="download" download="sample.txt" style="display:block;width:100%;height:2rem;line-height:2rem;text-align:center;position:absolute;bottom:0;text-decoration:none;cursor:pointer;">Download</a>
+		</div>	
+	</section>
+	<section id="top" style="text-align:center;">
+		<div>
+			<h5>QRLite ver:<span id="version"></span></h5>
+			<input id="value" type="text"/>
+		</div>
+
+		<hr />
+
+		<div>
+			<h5>Create test QRCode</h5>
+			<button id="show">Converter</button>
+		</div>
+
+		<hr />
+		<footer style="text-align:center;"><small>&copy; 2019 Hiroki. <a href="https://github.com/HirokiMiyaoka/QRLite">GitHub</a></small></footer>
+	</section>
 </body>
 </html>

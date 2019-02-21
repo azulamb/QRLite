@@ -27,7 +27,14 @@ function OutputBitmapFile( name, canvas, frame ) {
 OutputBitmapFile( 'test.bmp', QRLite.convert( 'test' ) );
 ```
 
-## QRCode WebComponents(Browser sample)
+## Browser sample
+
+```html
+<script src="./qrlite.js"></script>
+<script>console.log(QRLite);</script>
+```
+
+## QRCode WebComponents(Browser sample2)
 
 https://github.com/HirokiMiyaoka/QRCodeComponent
 

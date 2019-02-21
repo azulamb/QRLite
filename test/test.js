@@ -10,7 +10,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 const fs = require("fs");
 const path = require("path");
-const QR = require('../index');
+const QRLite = require('../dest/nodejs/index');
+const Package = require('../package.json');
 let DEBUG = false;
 let BINARY = false;
 let TESTS = [];
@@ -81,7 +82,7 @@ function RunTest(dir) {
         const data = yield ReadText(path.join(dir, 'test.txt'));
         const sample = yield ReadText(path.join(dir, 'sample.txt'));
         const [num, ver, level] = dir.split('_');
-        const qr = new QR.Generator();
+        const qr = new QRLite.Generator();
         result.level = qr.setLevel(level);
         const rawdata = qr.setData(data);
         result.version = qr.getVersion();
@@ -141,7 +142,7 @@ function RunTestBMP(dir) {
         const data = yield ReadText(path.join(dir, 'test.txt'));
         const sample = yield ReadFile(path.join(dir, 'sample.bmp'));
         const [num, ver, level] = dir.split('_');
-        const qr = new QR.Generator();
+        const qr = new QRLite.Generator();
         result.level = qr.setLevel(level);
         const rawdata = qr.setData(data);
         result.version = qr.getVersion();
@@ -173,6 +174,9 @@ function RunTestBMP(dir) {
 }
 function Main(base = './test/') {
     return __awaiter(this, void 0, void 0, function* () {
+        if (QRLite.Version !== Package.version) {
+            throw `Version error!!! script: ${QRLite.Version} package.json: ${Package.version}`;
+        }
         const dirs = 0 < TESTS.length ? TESTS.map((d) => { return path.join(base, d); }) : yield Readdir(base, true);
         for (let i = 0; i < dirs.length; ++i) {
             const result = yield (BINARY ? RunTestBMP(dirs[i]) : RunTest(dirs[i]));
@@ -183,4 +187,5 @@ function Main(base = './test/') {
         }
     });
 }
+console.log(`QRLite ver: ${QRLite.Version}`);
 Main().then(() => { console.log('Complete.'); }).catch((error) => { console.error(error); });

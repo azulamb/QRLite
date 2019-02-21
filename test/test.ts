@@ -1,7 +1,8 @@
-/// <reference path="../index.d.ts" />
+/// <reference path="../dest/nodejs/index.d.ts" />
 import * as fs from 'fs'
 import * as path from 'path'
-const QR = require( '../index' );
+const QRLite = <QRLite>require( '../dest/nodejs/index' );
+const Package = <{ version: string }>require( '../package.json' );
 
 let DEBUG = false;
 let BINARY = false;
@@ -82,7 +83,7 @@ async function RunTest( dir: string )
 	const sample = await ReadText( path.join( dir, 'sample.txt' ) );
 	const [ num, ver, level ] = dir.split( '_' );
 
-	const qr = <QRLite.Generator>new QR.Generator();
+	const qr = new QRLite.Generator();
 	result.level = qr.setLevel( <'L'|'M'|'Q'|'H'>level );
 
 	const rawdata = qr.setData( data );
@@ -147,7 +148,7 @@ async function RunTestBMP( dir: string )
 	const sample = await ReadFile( path.join( dir, 'sample.bmp' ) );
 	const [ num, ver, level ] = dir.split( '_' );
 
-	const qr = <QRLite.Generator>new QR.Generator();
+	const qr = new QRLite.Generator();
 	result.level = qr.setLevel( <'L'|'M'|'Q'|'H'>level );
 	
 	const rawdata = qr.setData( data );
@@ -185,6 +186,7 @@ async function RunTestBMP( dir: string )
 
 async function Main( base = './test/' )
 {
+	if ( QRLite.Version !== Package.version ) { throw `Version error!!! script: ${ QRLite.Version } package.json: ${ Package.version }`; }
 	const dirs = 0 < TESTS.length ? TESTS.map( ( d ) => { return path.join( base, d ); } ) : await Readdir( base, true );
 	for ( let i = 0 ; i < dirs.length ; ++i )
 	{
@@ -194,4 +196,5 @@ async function Main( base = './test/' )
 	}
 }
 
+console.log( `QRLite ver: ${ QRLite.Version }` );
 Main().then( () => { console.log( 'Complete.' ); } ).catch( ( error ) => { console.error( error ); } );

@@ -1,7 +1,7 @@
 {
 	"compilerOptions": {
-		"outFile": "../../index.js",
-		"module": "amd",
+		"outDir": "../../dest",
+		"module": "commonjs",
 		"target": "es6",
 		"declaration": true,
 		"strictNullChecks": true,

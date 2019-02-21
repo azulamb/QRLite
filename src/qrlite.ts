@@ -2,63 +2,142 @@
 QRLite ... 8bit mode QRCode Generator
 ========================================*/
 
-module QRLite
+/*========================================
+    Types
+========================================*/
+
+interface QRLite
 {
-	export const version = '0.1.1';
-	export const White = false;
-	export const Black = true;
-	const W = White;
-	const B = Black;
+	Version: string,
+	White: false,
+	Black: true,
+	Info: QRLiteInfo,
 
-	/*========================================
-	    Types
-	========================================*/
+	Generator: { new(): QRLiteGenerator },
 
-	export type Level = 'L' | 'M' | 'Q' | 'H';
+	convert( data: string, option: QRLiteConvertOption ): QRLiteBitCanvas,
+}
 
-	export interface QRLiteRSBlock
+interface QRLiteConvertOption
+{
+	level?: QRLiteLevel,
+	version?: number,
+	mask?: number,
+}
+
+type QRLiteLevel = 'L' | 'M' | 'Q' | 'H';
+
+interface QRLiteRSBlock
+{
+	count: number,
+	block: number[],
+}
+
+interface QRLiteLevelData
+{
+	DataCode: number,
+	ECCode: number,
+	Size: number,
+	RS: QRLiteRSBlock[],
+}
+
+interface QRLiteInfo
+{
+	Data:
 	{
-		count: number,
-		block: number[],
-	}
-
-	export interface LevelData
-	{
-		DataCode: number,
-		ECCode: number,
-		Size: number,
-		RS: QRLiteRSBlock[],
-	}
-
-	export interface QRInfo
-	{
-		Data:
+		[ key: number ]: // version.
 		{
-			[ key: number ]: // version.
-			{
-				L: LevelData,
-				M: LevelData,
-				Q: LevelData,
-				H: LevelData,
-				Alignment: { x: number, y: number }[],
-			},
+			L: QRLiteLevelData,
+			M: QRLiteLevelData,
+			Q: QRLiteLevelData,
+			H: QRLiteLevelData,
+			Alignment: { x: number, y: number }[],
 		},
-		ItoE: number[],
-		G: { [ key: number ]: { a: number, x: number }[] },
-		Mask: { [ key: number ]: ( i: number, j: number ) => boolean },
-	}
+	},
+	ItoE: number[],
+	G: { [ key: number ]: { a: number, x: number }[] },
+	Mask: { [ key: number ]: ( i: number, j: number ) => boolean },
+}
 
-	export interface Rating
-	{
-		calc: ( canvas: BitCanvas ) => number;
-	}
+interface QRLiteBitCanvas
+{
+	width: number,
+	height: number,
+	getPixels(): boolean[],
+	clone(): QRLiteBitCanvas,
 
-	export interface ConvertOption
+	// For QRCode.
+	reverse( func: ( i: number, j: number ) => boolean, mask: boolean[] ): this;
+	drawQRInfo( level?: QRLiteLevel, mask?: number ): this;
+	drawTimingPattern(): this;
+	drawFinderPattern( x: number, y: number ): this;
+	drawAlignmentPattern( x: number, y: number ): this;
+	drawQRByte( byte: Uint8Array, cursor?: { x: number, y: number, up: boolean, right: boolean } ): { x: number, y: number, up: boolean, right: boolean };
+	fillEmpty( color?: boolean ): number;
+
+	sprint( option?: { white?: string, black?: string, none?: string, newline?: string } ): string,
+	print( white: string, black: string, none: string ): void,
+	outputBitmapByte( frame?: number ): number[],
+}
+
+interface QRLiteRating
+{
+	calc: ( canvas: QRLiteBitCanvas ) => number;
+}
+
+interface QRLiteGenerator
+{
+	get(): QRLiteBitCanvas,
+	getLevel(): QRLiteLevel,
+	setLevel( level: QRLiteLevel ): QRLiteLevel;
+	getVersion(): number;
+	setVersion( version?: number ): number;
+	getLastMask(): number;
+	setRating( rating?: QRLiteRating ): void,
+	setData( data: string | Uint8Array ): Uint8Array | null,
+	createDataCode(): Uint8Array[],
+	drawData( data: Uint8Array, ec: Uint8Array ): void;
+	createMaskedQRCode(): QRLiteBitCanvas[];
+	evaluateQRCode( qrcodes: QRLiteBitCanvas[] ): number[],
+	selectQRCode( qrcodes: QRLiteBitCanvas[] ): number;
+	convert( datastr: string, option?: QRLiteConvertOption ): QRLiteBitCanvas,
+}
+
+( ( generate ) =>
+{
+	if ( typeof module !== 'undefined' )
 	{
-		level?: Level,
-		version?: number,
-		mask?: number,
+		// Node.js
+		module.exports = generate();
+	} else
+	{
+		// Browser
+		if ( 'QRLite' in window ) { return; }
+		(<any>window).QRLite = generate();
 	}
+} )( () =>
+{
+	const qrlite: QRLite =
+	{
+		// Values.
+		Version: '0.1.2',
+		White: false,
+		Black: true,
+		Info: <any>null,
+
+		// Class.
+		Generator: <any>null,
+
+		// Functom.
+		convert: ( data, option ) =>
+		{
+			const qr = new Generator();
+			return qr.convert( data, option );
+		},
+	};
+
+	const W = qrlite.White;
+	const B = qrlite.Black;
 
 	/*========================================
 	    Support
@@ -155,14 +234,14 @@ module QRLite
 
 	class MonochromeBitmap
 	{
-		public output( canvas: BitCanvas, frame: number = 1 )
+		public output( canvas: QRLiteBitCanvas, frame: number )
 		{
 			const width = canvas.width;
 			const height = canvas.height;
 			const bitarray = canvas.getPixels();
 			const byte: number[] = [];
 
-			if ( frame <= 0 ) { frame = 0; }
+			if ( !frame || frame <= 0 ) { frame = 0; }
 
 			// BMP header.
 			byte.push( 0x42, 0x4D );
@@ -179,9 +258,11 @@ module QRLite
 			byte.push( ... this.numberToLE4Byte( width + frame * 2 ) );
 			// Height.
 			byte.push( ... this.numberToLE4Byte( height + frame * 2 ) );
-			// ???
+			// Planes
 			byte.push( 1, 0 );
+			// Bit count. Monochro = 1.
 			byte.push( 1, 0 );
+			// Compression
 			byte.push( 0, 0, 0, 0 );
 			// Datasize.(after)
 			byte.push( 0, 0, 0, 0 );
@@ -191,8 +272,8 @@ module QRLite
 			byte.push( 0, 0, 0, 0 );
 			byte.push( 0, 0, 0, 0 );
 			// Pallet.
-			byte.push( 0, 0, 0, 0 );
-			byte.push( 255, 255, 255, 0 );
+			byte.push( 255, 255, 255, 0 ); // White = 0 = false
+			byte.push( 0, 0, 0, 0 );       // Black = 1 = true
 
 			// Offset.
 			const offset = this.numberToLE4Byte( byte.length );
@@ -206,48 +287,23 @@ module QRLite
 			// Image data.
 
 			// Frame = only white
-			for ( let y = 0 ; y < frame ; ++y )
-			{
-				const length = width + frame * 2;
-				let count = 0;
-				let x: number;
-				for ( x = 0 ; x < length ; x += 8 )
-				{
-					++count;
-					byte.push( 255 );
-				}
-				if ( length % 8 !== 0 )
-				{
-					++count;
-					x = length % 8;
-					const dot8 = [ false, false, false, false, false, false, false, false ];
-					for ( let i = 0 ; i < 8 ; ++i ) { dot8[ i ] = i < x; }
-					byte.push( (dot8[ 0 ] ? 128 : 0) + (dot8[ 1 ] ? 64 : 0) + (dot8[ 2 ] ? 32 : 0) + (dot8[ 3 ] ? 16 : 0) + (dot8[ 4 ] ? 8 : 0) + (dot8[ 5 ] ? 4 : 0) + (dot8[ 6 ] ? 2 : 0) + (dot8[ 7 ] ? 1 : 0) );
-				}
-				while ( count % 4 !== 0 ) { ++count; byte.push( 0 ); }
-			}
+			this.whiteLine( byte, width, frame );
 
 			// Image = frame data frame
 			for ( let y = height - 1 ; 0 <= y ; --y )
 			{
-				const dot8 = [ false, false, false, false, false, false, false, false ];
+				const dot8 = [ true, true, true, true, true, true, true, true ];
 				let x: number;
 				let count = 0;
 				let w = 0;
 				for ( x = -frame ; x < width + frame ; ++x )
 				{
-					if ( x < 0 || width <= x )
-					{
-						dot8[ w ] = true;
-					} else
-					{
-						dot8[ w ] = !bitarray[ y * width + x ];
-					}
+					dot8[ w ] = ( x < 0 || width <= x ) ? false : dot8[ w ] = bitarray[ y * width + x ];
 					if ( ++w === 8 )
 					{
 						++count;
 						byte.push( (dot8[ 0 ] ? 128 : 0) + (dot8[ 1 ] ? 64 : 0) + (dot8[ 2 ] ? 32 : 0) + (dot8[ 3 ] ? 16 : 0) + (dot8[ 4 ] ? 8 : 0) + (dot8[ 5 ] ? 4 : 0) + (dot8[ 6 ] ? 2 : 0) + (dot8[ 7 ] ? 1 : 0) );
-						dot8[ 0 ] = dot8[ 1 ] = dot8[ 2 ] = dot8[ 3 ] = dot8[ 4 ] = dot8[ 5 ] = dot8[ 6 ] = dot8[ 7 ] = false;
+						dot8[ 0 ] = dot8[ 1 ] = dot8[ 2 ] = dot8[ 3 ] = dot8[ 4 ] = dot8[ 5 ] = dot8[ 6 ] = dot8[ 7 ] = true;
 						w = 0;
 					}
 				}
@@ -260,26 +316,7 @@ module QRLite
 			}
 
 			// Frame = only white
-			for ( let y = 0 ; y < frame ; ++y )
-			{
-				const length = width + frame * 2;
-				let count = 0;
-				let x: number;
-				for ( x = 0 ; x < length ; x += 8 )
-				{
-					++count;
-					byte.push( 255 );
-				}
-				if ( length % 8 !== 0 )
-				{
-					++count;
-					x = length % 8;
-					const dot8 = [ false, false, false, false, false, false, false, false ];
-					for ( let i = 0 ; i < 8 ; ++i ) { dot8[ i ] = i < x; }
-					byte.push( (dot8[ 0 ] ? 128 : 0) + (dot8[ 1 ] ? 64 : 0) + (dot8[ 2 ] ? 32 : 0) + (dot8[ 3 ] ? 16 : 0) + (dot8[ 4 ] ? 8 : 0) + (dot8[ 5 ] ? 4 : 0) + (dot8[ 6 ] ? 2 : 0) + (dot8[ 7 ] ? 1 : 0) );
-				}
-				while ( count % 4 !== 0 ) { ++count; byte.push( 0 ); }
-			}
+			this.whiteLine( byte, width, frame );
 
 			// File size.
 			const filesize = this.numberToLE4Byte( byte.length );
@@ -298,6 +335,28 @@ module QRLite
 			return byte;
 		}
 
+		private whiteLine( byte: number[], width: number, frame: number )
+		{
+			for ( let y = 0 ; y < frame ; ++y )
+			{
+				const length = width + frame * 2;
+				let count = 0;
+				let x: number;
+				for ( x = 8 ; x < length ; x += 8 )
+				{
+					++count;
+					byte.push( 0 );
+				}
+				if ( length % 8 !== 0 )
+				{
+					++count;
+					x = length % 8;
+					byte.push( 0 );
+				}
+				while ( count % 4 !== 0 ) { ++count; byte.push( 0 ); }
+			}
+		}
+
 		private numberToLE4Byte( data: number )
 		{
 			const byte = [ 0, 0, 0, 0 ];
@@ -310,7 +369,7 @@ module QRLite
 		}
 	}
 
-	export class BitCanvas
+	class BitCanvas implements QRLiteBitCanvas
 	{
 		public width: number;
 		public height: number;
@@ -323,7 +382,7 @@ module QRLite
 			this.bitarray = new Array<boolean>( w * h );
 		}
 
-		public clone()
+		public clone(): QRLiteBitCanvas
 		{
 			const canvas = new BitCanvas( this.width, this.height );
 			canvas.drawFromBitarray( this.bitarray );
@@ -378,9 +437,9 @@ module QRLite
 			return this;
 		}
 
-		public drawQRInfo( level?: Level, mask?: number )
+		public drawQRInfo( level?: QRLiteLevel, mask?: number )
 		{
-			const data = [ B, B, B, B, B, B, B, B, B, B, B, B, B, B, B ];
+			const data: boolean[] = [ B, B, B, B, B, B, B, B, B, B, B, B, B, B, B ];
 
 			switch ( level )
 			{
@@ -668,16 +727,16 @@ module QRLite
 			console.log( this.sprint( { white: white, black: black, none: none } ) );
 		}
 
-		public outputBitmapByte( frame: number = 1 )
+		public outputBitmapByte( frame: number = 4 ): number[]
 		{
 			const bitmap = new MonochromeBitmap();
 			return bitmap.output( this, frame );
 		}
 	}
 
-	class DefaultRating implements Rating
+	class DefaultRating implements QRLiteRating
 	{
-		public calc( canvas: BitCanvas )
+		public calc( canvas: QRLiteBitCanvas )
 		{
 			const bitarray = canvas.getPixels();
 			let point = 0;
@@ -831,16 +890,15 @@ module QRLite
 	/*========================================
 	    QR code generator
 	========================================*/
-
-	export class Generator
+	class Generator implements QRLiteGenerator
 	{
-		private level: Level;
+		private level: QRLiteLevel;
 		private version: number;
 		private lastmask = 0;
 		private rawdata: Uint8Array;
-		private canvas: BitCanvas;
+		private canvas: QRLiteBitCanvas;
 		private mask: boolean[];
-		private rating: Rating;
+		private rating: QRLiteRating;
 
 		constructor()
 		{
@@ -853,7 +911,7 @@ module QRLite
 
 		public getLevel() { return this.level; }
 
-		public setLevel( level: Level )
+		public setLevel( level: QRLiteLevel )
 		{
 			if ( level !== 'L' && level !== 'M' && level !== 'Q' && level !== 'H' ) { level = 'Q'; }
 			this.level = level;
@@ -882,9 +940,9 @@ module QRLite
 			this.canvas.drawFinderPattern( -1, -1 );
 			this.canvas.drawFinderPattern( w - 8, -1 );
 			this.canvas.drawFinderPattern( -1, h - 8 );
-			if ( INFO.Data[ this.version ].Alignment )
+			if ( Info.Data[ this.version ].Alignment )
 			{
-				INFO.Data[ this.version ].Alignment.forEach( ( pos ) =>
+				Info.Data[ this.version ].Alignment.forEach( ( pos ) =>
 				{
 					this.canvas.drawAlignmentPattern( pos.x, pos.y );
 				} );
@@ -898,7 +956,7 @@ module QRLite
 
 		public getLastMask() { return this.lastmask; }
 
-		public setRating( rating?: Rating ) { this.rating = rating || new DefaultRating(); }
+		public setRating( rating?: QRLiteRating ) { this.rating = rating || new DefaultRating(); }
 
 		public setData( data: string | Uint8Array )
 		{
@@ -931,10 +989,10 @@ module QRLite
 
 		public createMaskedQRCode()
 		{
-			const masked: BitCanvas[] = [];
+			const masked: QRLiteBitCanvas[] = [];
 			for ( let masknum = 0 ; masknum < 8 ; ++masknum )
 			{
-				masked.push( this.canvas.clone().reverse( INFO.Mask[ masknum ], this.mask ) );
+				masked.push( this.canvas.clone().reverse( Info.Mask[ masknum ], this.mask ) );
 			}
 
 			masked.forEach( ( qrcode, masknum ) =>
@@ -945,12 +1003,12 @@ module QRLite
 			return masked;
 		}
 
-		public evaluateQRCode( qrcodes: BitCanvas[] )
+		public evaluateQRCode( qrcodes: QRLiteBitCanvas[] )
 		{
 			return qrcodes.map( ( canvas ) => { return this.rating.calc( canvas ); } );
 		}
 
-		public selectQRCode( qrcodes: BitCanvas[] )
+		public selectQRCode( qrcodes: QRLiteBitCanvas[] )
 		{
 			const points = this.evaluateQRCode( qrcodes );
 			let masknum = 0;
@@ -962,7 +1020,7 @@ module QRLite
 			return masknum;
 		}
 
-		public convert( datastr: string, option: ConvertOption = {} )
+		public convert( datastr: string, option: QRLiteConvertOption = {} )
 		{
 			const newlevel = this.setLevel( option.level || this.level );
 
@@ -985,9 +1043,9 @@ module QRLite
 			return masked[ this.lastmask ];
 		}
 
-		private createDataBlock( level: Level, version: number, data: Uint8Array )
+		private createDataBlock( level: QRLiteLevel, version: number, data: Uint8Array )
 		{
-			const byte = new Byte( INFO.Data[ version ][ level ].DataCode );
+			const byte = new Byte( Info.Data[ version ][ level ].DataCode );
 
 			// Byte mode.
 			byte.addBit( 0, 1, 0, 0 );
@@ -1008,13 +1066,13 @@ module QRLite
 				byte.addByteNumber( 17 ); // 00010001
 			}
 
-			return this.spritDataBlock( byte.get(), INFO.Data[ version ][ level ].RS );
+			return this.spritDataBlock( byte.get(), Info.Data[ version ][ level ].RS );
 		}
 
-		private createECBlock( level: Level, version: number, blocks: Uint8Array[] )
+		private createECBlock( level: QRLiteLevel, version: number, blocks: Uint8Array[] )
 		{
 			const countEC = this.countErrorCode( version, level );
-			const g = INFO.G[ countEC ];
+			const g = Info.G[ countEC ];
 
 			return blocks.map( ( block ) =>
 			{
@@ -1030,13 +1088,13 @@ module QRLite
 
 				for ( let i = 0 ; i < block.length ; ++i )
 				{
-					const k = INFO.ItoE[ f[ i ].k ];
+					const k = Info.ItoE[ f[ i ].k ];
 					const px = f[ i ].x - g[ 0 ].x;
 
 					const gax = g.map( ( v, index ) =>
 					{
 						const e = ( k + v.a ) % 255;
-						return { k: INFO.ItoE.indexOf( e ), x: v.x + px };
+						return { k: Info.ItoE.indexOf( e ), x: v.x + px };
 					} );
 
 					f = f.map( ( v, index ) =>
@@ -1063,19 +1121,19 @@ module QRLite
 			} ) ) );
 		}
 
-		private searchVersion( datasize: number, level: Level )
+		private searchVersion( datasize: number, level: QRLiteLevel )
 		{
-			const versions = Object.keys( INFO.Data );
+			const versions = Object.keys( Info.Data );
 
 			for ( let i = 0 ; i < versions.length ; ++i )
 			{
-				if ( datasize < INFO.Data[ parseInt( versions[ i ] ) ][ level ].Size ) { return parseInt( versions[ i ] ); }
+				if ( datasize < Info.Data[ parseInt( versions[ i ] ) ][ level ].Size ) { return parseInt( versions[ i ] ); }
 			}
 
 			return 0;
 		}
 
-		private calcLengthBitarray( datasize: number, version: number, level: Level )
+		private calcLengthBitarray( datasize: number, version: number, level: QRLiteLevel )
 		{
 			const bitlen = 8;
 			const byte: number[] = [];
@@ -1102,11 +1160,11 @@ module QRLite
 			return blocks;
 		}
 
-		private countErrorCode( version: number, level: Level )
+		private countErrorCode( version: number, level: QRLiteLevel )
 		{
-			const code = INFO.Data[ version ][ level ].ECCode;
+			const code = Info.Data[ version ][ level ].ECCode;
 			let count = 0;
-			INFO.Data[ version ][ level ].RS.forEach( ( block ) =>
+			Info.Data[ version ][ level ].RS.forEach( ( block ) =>
 			{
 				count += block.count;
 			} );
@@ -1130,7 +1188,7 @@ module QRLite
 			return byte;
 		}
 
-		private convertMask( canvas: BitCanvas )
+		private convertMask( canvas: QRLiteBitCanvas )
 		{
 			const _mask = canvas.getPixels();
 			const mask: boolean[] = [];
@@ -1138,22 +1196,13 @@ module QRLite
 			return mask;
 		}
 	}
-
-	/*========================================
-	    Simple converter
-	========================================*/
-
-	export function convert( data: string, option: ConvertOption )
-	{
-		const qr = new Generator();
-		return qr.convert( data, option );
-	}
+	qrlite.Generator = Generator;
 
 	/*========================================
 	    Static data
 	========================================*/
 
-	export const INFO: QRInfo =
+	const Info: QRLiteInfo = qrlite.Info =
 	{
 		Data:
 		{
@@ -2199,4 +2248,6 @@ module QRLite
 			7: ( i: number, j: number ) => { return ( ( i * j ) % 3 + ( i + j ) % 2 ) % 2 === 0; },
 		},
 	};
-}
+
+	return qrlite;
+} );

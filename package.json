@@ -1,10 +1,10 @@
 {
   "private": true,
   "name": "qrlite",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "",
-  "main": "./index.js",
-  "types": "./src/qrlite.d.ts",
+  "main": "./dest/nodejs/index.js",
+  "types": "./dest/nodejs/index.d.ts",
   "directories": {
     "doc": "docs"
   },

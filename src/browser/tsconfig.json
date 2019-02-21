@@ -1,6 +1,6 @@
 {
 	"compilerOptions": {
-		"outFile": "../../docs/qrlite.browser.js",
+		"outFile": "../../docs/qrlite.js",
 		"module": "system",
 		"declaration": true,
 		"moduleResolution": "node",
