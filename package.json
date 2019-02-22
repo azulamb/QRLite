@@ -1,15 +1,16 @@
 {
   "name": "qrlite",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "main": "./dest/nodejs/index.js",
-  "types": "./dest/nodejs/index.d.ts",
+  "types": "./dest/typescript/index.d.ts",
   "directories": {
     "doc": "docs"
   },
   "scripts": {
     "browser": "tsc --p src/browser",
     "nodejs": "tsc --p src/nodejs",
+    "types": "tsc --p src/typescript/",
     "build": "tsc --p test/",
     "test": "node test/test.js"
   },

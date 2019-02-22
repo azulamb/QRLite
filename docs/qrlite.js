@@ -10,7 +10,7 @@
     }
 })(() => {
     const qrlite = {
-        Version: '1.0.0',
+        Version: '1.0.1',
         White: false,
         Black: true,
         Info: null,

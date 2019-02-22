@@ -369,3 +369,9 @@ QRコードの余白を取り除き、白は [`  `] 黒は [`██`] にした�
   * できればES Moduleに対応したい。
 * @types/qrlite
   * どうすればいいのか試行錯誤中。
+* typedocs
+* QRPrintコマンド
+  * 文字列与えるとその場で出力するコマンドとか作りたい。
+  * qrplintとかqrimageとか。
+* TypeScript対応
+  * importしたい。
