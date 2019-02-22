@@ -10,7 +10,7 @@
     }
 })(() => {
     const qrlite = {
-        Version: '0.1.3',
+        Version: '1.0.0',
         White: false,
         Black: true,
         Info: null,
@@ -201,7 +201,7 @@
         getPixels() { return this.bitarray; }
         drawPixel(x, y, black) {
             if (x < 0 || this.width <= x || y < 0 || this.height <= y) {
-                return;
+                return this;
             }
             this.bitarray[y * this.width + x] = !!black;
             return this;

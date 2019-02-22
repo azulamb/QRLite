@@ -1,7 +1,6 @@
 {
-  "private": true,
   "name": "qrlite",
-  "version": "0.1.3",
+  "version": "1.0.0",
   "description": "",
   "main": "./dest/nodejs/index.js",
   "types": "./dest/nodejs/index.d.ts",

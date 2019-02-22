@@ -122,7 +122,7 @@ interface QRLiteGenerator
 	const qrlite: QRLite =
 	{
 		// Values.
-		Version: '0.1.3',
+		Version: '1.0.0',
 		White: false,
 		Black: true,
 		Info: <any>null,

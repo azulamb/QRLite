@@ -51,9 +51,10 @@ interface QRLiteInfo {
 interface QRLiteBitCanvas {
     width: number;
     height: number;
+    clone(): QRLiteBitCanvas;
+    getPixel(x: number, y: number): boolean;
     getPixels(): boolean[];
     drawPixel(x: number, y: number, black: boolean): this;
-    clone(): QRLiteBitCanvas;
     reverse(func: (i: number, j: number) => boolean, mask: boolean[]): this;
     drawQRInfo(level?: QRLiteLevel, mask?: number): this;
     drawTimingPattern(): this;

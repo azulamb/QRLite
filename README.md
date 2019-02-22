@@ -14,7 +14,7 @@ QRlite can output QRLite bitmap canvas, text, and Monochrome bitmap.
 # Install
 
 ```sh
-npm i HirokiMiyaoka/QRLite
+npm i qrlite
 ```
 
 # Sample

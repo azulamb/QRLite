@@ -14,7 +14,7 @@ QRコードの勉強を兼ねてTypeScriptのみで作成したQRコード生成
 # Install
 
 ```sh
-npm i HirokiMiyaoka/QRLite
+npm i qrlite
 ```
 
 # Sample
