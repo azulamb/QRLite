@@ -1,7 +1,8 @@
 {
   "name": "qrlite",
   "version": "1.0.1",
-  "description": "",
+  "description": "QRLite is QRCode(only 8bit mode) generator written in TypeScript only.",
+  "keywords":[ "QRCode", "TypeScript" ],
   "main": "./dest/nodejs/index.js",
   "types": "./dest/typescript/index.d.ts",
   "directories": {
