@@ -1,7 +1,7 @@
 # QRLite
 
 [![MIT License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE)
-[![npm](https://img.shields.io/badge/npm-v1.0.0-blue.svg?style=flat)](https://www.npmjs.com/package/qrlite)
+[![npm](https://img.shields.io/badge/npm-v1.0.1-blue.svg?style=flat)](https://www.npmjs.com/package/qrlite)
 ![browser](https://img.shields.io/badge/js-browser-blue.svg?style=flat "browser")
 ![nodejs](https://img.shields.io/badge/js-nodejs-blue.svg?style=flat "nodejs")
 
@@ -44,6 +44,12 @@ OutputBitmapFile( 'test.bmp', QRLite.convert( 'test' ) );
 https://github.com/HirokiMiyaoka/QRCodeComponent
 
 QRCodeComponent is QRCode generate and draw Webcomponents uses QRLite.
+
+## TypeScript sample
+
+```ts
+import * as QRLite from 'qrlite';
+```
 
 # Debug
 

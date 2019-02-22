@@ -1,7 +1,7 @@
 # QRLite
 
 [![MIT License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE)
-[![npm](https://img.shields.io/badge/npm-v1.0.0-blue.svg?style=flat)](https://www.npmjs.com/package/qrlite)
+[![npm](https://img.shields.io/badge/npm-v1.0.1-blue.svg?style=flat)](https://www.npmjs.com/package/qrlite)
 ![browser](https://img.shields.io/badge/js-browser-blue.svg?style=flat "browser")
 ![nodejs](https://img.shields.io/badge/js-nodejs-blue.svg?style=flat "nodejs")
 
@@ -46,6 +46,14 @@ https://github.com/HirokiMiyaoka/QRCodeComponent
 QRコードを生成するWebComponentsです。
 
 QRコードの生成部分はこのQRLiteを使い、WebComponentsを使って実際のViewと連携しています。
+
+## TypeScript sample
+
+```ts
+import * as QRLite from 'qrlite';
+```
+
+上のように読み込めば後は普通に `QRLite` が使えます。
 
 # Debug
 
@@ -373,5 +381,3 @@ QRコードの余白を取り除き、白は [`  `] 黒は [`██`] にした�
 * QRPrintコマンド
   * 文字列与えるとその場で出力するコマンドとか作りたい。
   * qrplintとかqrimageとか。
-* TypeScript対応
-  * importしたい。
