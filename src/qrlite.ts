@@ -63,8 +63,10 @@ interface QRLiteBitCanvas
 {
 	width: number,
 	height: number,
-	getPixels(): boolean[],
 	clone(): QRLiteBitCanvas,
+	getPixel( x: number, y: number ): boolean,
+	getPixels(): boolean[],
+	drawPixel( x: number, y: number, black: boolean ): this,
 
 	// For QRCode.
 	reverse( func: ( i: number, j: number ) => boolean, mask: boolean[] ): this;
@@ -404,7 +406,7 @@ interface QRLiteGenerator
 
 		public drawPixel( x: number, y: number, black: boolean )
 		{
-			if ( x < 0 || this.width <= x || y < 0 || this.height <= y ) { return; }
+			if ( x < 0 || this.width <= x || y < 0 || this.height <= y ) { return this; }
 			this.bitarray[ y * this.width + x ] = !!black;
 			return this;
 		}
