@@ -120,7 +120,7 @@ interface QRLiteGenerator
 	const qrlite: QRLite =
 	{
 		// Values.
-		Version: '0.1.2',
+		Version: '0.1.3',
 		White: false,
 		Black: true,
 		Info: <any>null,
@@ -342,15 +342,9 @@ interface QRLiteGenerator
 				const length = width + frame * 2;
 				let count = 0;
 				let x: number;
-				for ( x = 8 ; x < length ; x += 8 )
+				for ( x = 0 ; x < length ; x += 8 )
 				{
 					++count;
-					byte.push( 0 );
-				}
-				if ( length % 8 !== 0 )
-				{
-					++count;
-					x = length % 8;
 					byte.push( 0 );
 				}
 				while ( count % 4 !== 0 ) { ++count; byte.push( 0 ); }
