@@ -10,7 +10,7 @@
     }
 })(() => {
     const qrlite = {
-        Version: '1.0.1',
+        Version: '1.1.0',
         White: false,
         Black: true,
         Info: null,
@@ -668,7 +668,7 @@
             version = Math.floor(version);
             const data = this.rawdata || '';
             const min = this.searchVersion(data.length, this.level);
-            this.version = (1 <= version && version <= 40 && min <= version) ? version : min;
+            this.version = ((1 <= version && version <= 40 && min <= version) ? version : min);
             if (this.version <= 0) {
                 return 0;
             }

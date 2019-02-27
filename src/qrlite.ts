@@ -21,7 +21,7 @@ QRLite ... 8bit mode QRCode Generator
 	const qrlite: QRLite =
 	{
 		// Values.
-		Version: '1.0.1',
+		Version: '1.1.0',
 		White: false,
 		Black: true,
 		Info: <any>null,
@@ -788,8 +788,8 @@ QRLite ... 8bit mode QRCode Generator
 	class Generator implements QRLiteGenerator
 	{
 		private level: QRLiteLevel;
-		private version: number;
-		private lastmask = 0;
+		private version: QRLiteVersion | 0;
+		private lastmask: QRLiteMask | 0 = 0;
 		private rawdata: Uint8Array;
 		private canvas: QRLiteBitCanvas;
 		private mask: boolean[];
@@ -815,14 +815,14 @@ QRLite ... 8bit mode QRCode Generator
 
 		public getVersion() { return this.version; }
 
-		public setVersion( version: number = 0 )
+		public setVersion( version = 0 )
 		{
 			version = Math.floor( version );
 			const data = this.rawdata || '';
 
 			const min = this.searchVersion( data.length, this.level );
 
-			this.version = ( 1 <= version && version <= 40 && min <= version ) ? version : min;
+			this.version = <QRLiteVersion>( ( 1 <= version && version <= 40 && min <= version ) ? version : min );
 
 			if ( this.version <= 0 ) { return 0; }
 
@@ -912,7 +912,7 @@ QRLite ... 8bit mode QRCode Generator
 			{
 				if ( points[ i ] < minpoint ) { masknum = i; minpoint = points[ i ]; }
 			}
-			return masknum;
+			return <QRLiteMask>masknum;
 		}
 
 		public convert( datastr: string, option: QRLiteConvertOption = {} )
@@ -933,7 +933,7 @@ QRLite ... 8bit mode QRCode Generator
 
 			const masked = this.createMaskedQRCode();
 
-			this.lastmask = ( typeof option.mask === 'number' && 0 <= option.mask && option.mask <= 7 ) ? Math.floor( option.mask ) : this.selectQRCode( masked );
+			this.lastmask = ( typeof option.mask === 'number' && 0 <= option.mask && option.mask <= 7 ) ? <QRLiteMask>Math.floor( option.mask ) : this.selectQRCode( masked );
 
 			return masked[ this.lastmask ];
 		}
@@ -1016,13 +1016,13 @@ QRLite ... 8bit mode QRCode Generator
 			} ) ) );
 		}
 
-		private searchVersion( datasize: number, level: QRLiteLevel )
+		private searchVersion( datasize: number, level: QRLiteLevel ): QRLiteVersion | 0
 		{
 			const versions = Object.keys( Info.Data );
 
 			for ( let i = 0 ; i < versions.length ; ++i )
 			{
-				if ( datasize < Info.Data[ parseInt( versions[ i ] ) ][ level ].Size ) { return parseInt( versions[ i ] ); }
+				if ( datasize < Info.Data[ parseInt( versions[ i ] ) ][ level ].Size ) { return <QRLiteVersion>parseInt( versions[ i ] ); }
 			}
 
 			return 0;
