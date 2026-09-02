@@ -1,0 +1,7 @@
+{
+  "tasks": {
+    "check": "deno check src/qrlite.ts test/deno_test.ts",
+    "test": "deno test test/deno_test.ts",
+    "verify": "deno task check && deno task test"
+  }
+}

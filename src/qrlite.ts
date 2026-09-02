@@ -1,44 +1,43 @@
-/// <reference path="./types.d.ts" />
+import type {
+	QRLiteBitCanvas,
+	QRLiteConvertOption,
+	QRLiteGenerator,
+	QRLiteInfo,
+	QRLiteLevel,
+	QRLiteMask,
+	QRLiteRating,
+	QRLiteRSBlock,
+	QRLiteVersion,
+} from "./types.d.ts";
+
+export type {
+	QRLiteBitCanvas,
+	QRLiteConvertOption,
+	QRLiteGenerator,
+	QRLiteInfo,
+	QRLiteLevel,
+	QRLiteMask,
+	QRLiteRating,
+	QRLiteRSBlock,
+	QRLiteVersion,
+} from "./types.d.ts";
 
 /*========================================
 QRLite ... 8bit mode QRCode Generator
 ========================================*/
 
-( ( generate ) =>
+export const Version = '1.1.0';
+export const White = false;
+export const Black = true;
+const W = White;
+const B = Black;
+export function convert( data: string, option?: QRLiteConvertOption )
 {
-	if ( typeof module !== 'undefined' )
-	{
-		// Node.js
-		module.exports = generate();
-	} else
-	{
-		// Browser
-		if ( 'QRLite' in window ) { return; }
-		(<any>window).QRLite = generate();
-	}
-} )( () =>
-{
-	const qrlite: QRLite =
-	{
-		// Values.
-		Version: '1.1.0',
-		White: false,
-		Black: true,
-		Info: <any>null,
+	const qr = new Generator();
+	return qr.convert( data, option );
+};
 
-		// Class.
-		Generator: <any>null,
 
-		// Functom.
-		convert: ( data, option ) =>
-		{
-			const qr = new Generator();
-			return qr.convert( data, option );
-		},
-	};
-
-	const W = qrlite.White;
-	const B = qrlite.Black;
 
 	/*========================================
 	    Support
@@ -785,15 +784,15 @@ QRLite ... 8bit mode QRCode Generator
 	/*========================================
 	    QR code generator
 	========================================*/
-	class Generator implements QRLiteGenerator
+	export class Generator implements QRLiteGenerator
 	{
 		private level: QRLiteLevel;
 		private version: QRLiteVersion | 0;
 		private lastmask: QRLiteMask | 0 = 0;
-		private rawdata: Uint8Array;
-		private canvas: QRLiteBitCanvas;
-		private mask: boolean[];
-		private rating: QRLiteRating;
+		private rawdata!: Uint8Array;
+		private canvas!: QRLiteBitCanvas;
+		private mask!: boolean[];
+		private rating!: QRLiteRating;
 
 		constructor()
 		{
@@ -1091,13 +1090,12 @@ QRLite ... 8bit mode QRCode Generator
 			return mask;
 		}
 	}
-	qrlite.Generator = Generator;
 
 	/*========================================
 	    Static data
 	========================================*/
 
-	const Info: QRLiteInfo = qrlite.Info =
+	export const Info: QRLiteInfo =
 	{
 		Data:
 		{
@@ -2143,6 +2141,3 @@ QRLite ... 8bit mode QRCode Generator
 			7: ( i: number, j: number ) => { return ( ( i * j ) % 3 + ( i + j ) % 2 ) % 2 === 0; },
 		},
 	};
-
-	return qrlite;
-} );

@@ -1,4 +1,4 @@
-interface QRLite
+export interface QRLite
 {
 	Version: string,
 	White: false,
@@ -10,24 +10,24 @@ interface QRLite
 	convert( data: string, option: QRLiteConvertOption ): QRLiteBitCanvas,
 }
 
-interface QRLiteConvertOption
+export interface QRLiteConvertOption
 {
 	level?: QRLiteLevel,
 	version?: QRLiteVersion,
 	mask?: QRLiteMask,
 }
 
-type QRLiteLevel = 'L' | 'M' | 'Q' | 'H';
-type QRLiteMask = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
-type QRLiteVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24 | 25 | 26 | 27 | 28 | 29 | 30 | 31 | 32 | 33 | 34 | 35 | 36 | 37 | 38 | 39 | 40;
+export type QRLiteLevel = 'L' | 'M' | 'Q' | 'H';
+export type QRLiteMask = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export type QRLiteVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24 | 25 | 26 | 27 | 28 | 29 | 30 | 31 | 32 | 33 | 34 | 35 | 36 | 37 | 38 | 39 | 40;
 
-interface QRLiteRSBlock
+export interface QRLiteRSBlock
 {
 	count: number,
 	block: number[],
 }
 
-interface QRLiteLevelData
+export interface QRLiteLevelData
 {
 	DataCode: number,
 	ECCode: number,
@@ -35,7 +35,7 @@ interface QRLiteLevelData
 	RS: QRLiteRSBlock[],
 }
 
-interface QRLiteInfo
+export interface QRLiteInfo
 {
 	Data:
 	{
@@ -53,7 +53,7 @@ interface QRLiteInfo
 	Mask: { [ key: number ]: ( i: number, j: number ) => boolean },
 }
 
-interface QRLiteBitCanvas
+export interface QRLiteBitCanvas
 {
 	width: number;
 	height: number;
@@ -120,7 +120,7 @@ interface QRLiteBitCanvas
 	outputBitmapByte( frame?: number ): number[];
 }
 
-interface QRLiteRating
+export interface QRLiteRating
 {
 	/**
 	 * @param canvas QRCode.
@@ -129,7 +129,7 @@ interface QRLiteRating
 	calc: ( canvas: QRLiteBitCanvas ) => number;
 }
 
-interface QRLiteGenerator
+export interface QRLiteGenerator
 {
 	/**
 	 * @return Return generated QRCode.
