@@ -1,5 +1,8 @@
 {
-    "deno.enablePaths": [
-        "./"
-    ]
+  "deno.enablePaths": [
+    "./"
+  ],
+  "cSpell.words": [
+    "qrlite"
+  ]
 }

@@ -1,11 +1,4 @@
-import {
-  Black,
-  convert,
-  Generator,
-  Info,
-  Version,
-  White,
-} from "../src/qrlite.ts";
+import { Black, convert, Generator, Info, Version, White } from "../mod.ts";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) {

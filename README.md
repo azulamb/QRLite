@@ -16,22 +16,24 @@ npm i qrlite
 
 ## Output Bitmap(Node.js sample)
 
-``` js
-const QRLite = require( 'qrlite' );
-function OutputBitmapFile( name, canvas, frame ) {
-	if ( frame === undefined ) { frame = 4; }
-	var fs = require('fs');
-	var buf = Buffer.from( canvas.outputBitmapByte( frame ) );
-	fs.writeFileSync( name, buf );
+```js
+const QRLite = require("qrlite");
+function OutputBitmapFile(name, canvas, frame) {
+  if (frame === undefined) frame = 4;
+  var fs = require("fs");
+  var buf = Buffer.from(canvas.outputBitmapByte(frame));
+  fs.writeFileSync(name, buf);
 }
-OutputBitmapFile( 'test.bmp', QRLite.convert( 'test' ) );
+OutputBitmapFile("test.bmp", QRLite.convert("test"));
 ```
 
 ## Browser sample
 
 ```html
 <script src="./qrlite.js"></script>
-<script>console.log(QRLite);</script>
+<script>
+console.log(QRLite);
+</script>
 ```
 
 ## QRCode WebComponents(Browser sample2)
@@ -45,7 +47,7 @@ QRコードの生成部分はこのQRLiteを使い、WebComponentsを使って�
 ## TypeScript sample
 
 ```ts
-import * as QRLite from 'qrlite';
+import * as QRLite from "qrlite";
 ```
 
 上のように読み込めば後は普通に `QRLite` が使えます。
@@ -55,20 +57,20 @@ import * as QRLite from 'qrlite';
 以下のようにしてQRコードのビットデータを作成しています。（中身はほぼ`QRLite.Generator.convert`でやっていること。）
 途中で結果を出力などしていけばいろいろ見れるはず。
 
-``` js
+```js
 const qr = new QRLite.Generator();
 
 // Set level.
-qr.setLevel( 'Q' );
+qr.setLevel("Q");
 
 // Set data.
-qr.setData( 'test' );
+qr.setData("test");
 
 // datacode[ 0 ] = Data block, datacode[ 1 ] = EC Block
 const datacode = qr.createDataCode();
 
 // Raw QR Code.
-qr.drawData( datacode[ 0 ], datacode[ 1 ] );
+qr.drawData(datacode[0], datacode[1]);
 const rawcanvas = qr.get();
 
 // Get masked canvases.(masked[ 0-7 ] = QRLite.Canvas)
@@ -78,18 +80,20 @@ const masked = qr.createMaskedQRCode();
 // console.log( qr.evaluateQRCode( masked ) );
 
 // Select mask number.
-const masknum = qr.selectQRCode( masked );
+const masknum = qr.selectQRCode(masked);
 
 // QR Code.
-const canvas = masked[ masknum ];
+const canvas = masked[masknum];
 
 // Output to console.
 canvas.print();
 ```
 
-なお、QRコードは黒=1という扱いらしいので、それに従って黒は `1` や `true` で、白は `0` や `false`にします。
+なお、QRコードは黒=1という扱いらしいので、それに従って黒は `1` や `true`
+で、白は `0` や `false`にします。
 
-一応仕様上存在しないのですが、生成中のQRコードには透明な部分もあるので、そこは `undefined` として扱います。
+一応仕様上存在しないのですが、生成中のQRコードには透明な部分もあるので、そこは
+`undefined` として扱います。
 
 ## QRLite.convert(data: string, option: QRLiteConvertOption): QRLiteBitCanvas
 
@@ -108,12 +112,13 @@ interface QRLiteConvertOption {
 
 ## QRLite.Generator
 
-QRコードを生成するクラスです。
-主な演算周りを行います。
+QRコードを生成するクラスです。 主な演算周りを行います。
 
-BitやByte周りの操作は別クラスで行い、QRコードの画像としてのBit列は `QRLite.BitCanvas` を使って出力しています。
+BitやByte周りの操作は別クラスで行い、QRコードの画像としてのBit列は
+`QRLite.BitCanvas` を使って出力しています。
 
-初めにあるように丁寧に出力した場合、データのバイト列、誤り訂正コードのバイト列の他、マスク処理を行う前のQRコードやマスク処理を行った結果の8種類のQRコードも `QRLite.BitCanvas` で受け取ることが可能です。
+初めにあるように丁寧に出力した場合、データのバイト列、誤り訂正コードのバイト列の他、マスク処理を行う前のQRコードやマスク処理を行った結果の8種類のQRコードも
+`QRLite.BitCanvas` で受け取ることが可能です。
 
 （例えば最後の評価部分だけ自分でやるとか、データや誤り訂正コードだけ自作とかも可能。）
 
@@ -121,7 +126,8 @@ BitやByte周りの操作は別クラスで行い、QRコードの画像とし�
 
 データを与えることで一番良いQRコードを返します。レベルの指定も可能です。
 
-`QRLite.convert` は `new QRLite.Generator()` してこのメソッドを呼び出しているだけです。
+`QRLite.convert` は `new QRLite.Generator()`
+してこのメソッドを呼び出しているだけです。
 
 ### get(): QRLiteBitCanvas
 
@@ -134,14 +140,16 @@ BitやByte周りの操作は別クラスで行い、QRコードの画像とし�
 ### setLevel(level: QRLiteLevel): QRLiteLevel
 
 レベルを設定します。
-なおデータをいろいろ入れた後に入れても意味がないので、`setData` の前に行うか `setData` をもう一度実行しましょう。
+なおデータをいろいろ入れた後に入れても意味がないので、`setData` の前に行うか
+`setData` をもう一度実行しましょう。
 
 また、無効なレベルを設定した場合、実際に使用可能なレベルが設定されます。
 実際に設定されたレベルは返り値で取得可能です。
 
 ### getVersion() => number
 
-現在のバージョンを知ることができますが、`setData` の後でないと正確な情報は出てきません。
+現在のバージョンを知ることができますが、`setData`
+の後でないと正確な情報は出てきません。
 
 バージョンは現在のレベルとデータ量に応じて変化します。
 
@@ -153,9 +161,11 @@ interface QRLiteRating {
 }
 ```
 
-`interface QRLite.Rating { calc: ( canvas: BitCanvas ) => number; }` を継承したクラスのインスタンスを渡すと、その評価器を使ってQRコードを評価します。
+`interface QRLite.Rating { calc: ( canvas: BitCanvas ) => number; }`
+を継承したクラスのインスタンスを渡すと、その評価器を使ってQRコードを評価します。
 
-`QRLite.Rating` は `calc: ( canvas: BitCanvas ) => number` さえ実装していれば良いです。
+`QRLite.Rating` は `calc: ( canvas: BitCanvas ) => number`
+さえ実装していれば良いです。
 
 ちなみに、返す値が大きければ大きいほど減点が大きく悪いQRコードとなります。
 
@@ -175,7 +185,8 @@ QRコードのデータをセットします。
 
 ### drawData( data: Uint8Array, ec: Uint8Array )
 
-データと誤り訂正コードのバイト列を与えることで、 `QRLite.BitCanvas` にデータを書き込みます。
+データと誤り訂正コードのバイト列を与えることで、 `QRLite.BitCanvas`
+にデータを書き込みます。
 
 この時点で生のQRコードが得られます。
 
@@ -185,7 +196,8 @@ QRコードのデータをセットします。
 
 ### selectQRCode(qrcodes: QRLiteBitCanvas[]): number
 
-マスク処理を行った `QRLite.BitCanvas` の配列を与えると、その中で最も減点が低い `QRLite.BitCanvas` の番号が返されます。
+マスク処理を行った `QRLite.BitCanvas` の配列を与えると、その中で最も減点が低い
+`QRLite.BitCanvas` の番号が返されます。
 
 基本的には `createMaskedQRCode()` で得られた結果をそのまま与えます。
 
@@ -251,7 +263,7 @@ QRコードのデータを書き込みます。
 
 現在のQRコードを文字列にして返します。
 
-初期設定では白を `██`、黒を `  `、空を `--`、改行を `\n` で表示します。
+初期設定では白を `██`、黒を ``、空を `--`、改行を `\n` で表示します。
 
 背景黒、文字色白のターミナルの場合、きれいなQRコードを出力するはずです。
 
@@ -259,11 +271,11 @@ QRコードのデータを書き込みます。
 
 以下の `print()` は内部的にはこの `sprint()` を利用しています。
 
-### print( white: string = '██', black: string = '  ', none: string = '--' )
+### print( white: string = '██', black: string = ' ', none: string = '--' )
 
 `console.log` に現在のQRコードを出力します。
 
-初期設定では白を `██`、黒を `  `、空を `--` で表示します。
+初期設定では白を `██`、黒を ``、空を `--` で表示します。
 
 背景黒、文字色白のターミナルの場合、きれいなQRコードを出力するはずです。
 
@@ -273,7 +285,8 @@ QRコードのデータを書き込みます。
 
 モノクロビットマップのバイトが入った数値の配列を返します。
 
-Node.jsであれば `Buffer.from( canvas.outputBitmapByte( frame ) )` のようにしてBufferを作り、それをファイルに書き込めば良いです。
+Node.jsであれば `Buffer.from( canvas.outputBitmapByte( frame ) )`
+のようにしてBufferを作り、それをファイルに書き込めば良いです。
 
 何も指定しない場合はQRコードの周りに1pxの白枠を追加します。
 もし白枠を必要としない場合は0を与えてください。
@@ -284,7 +297,7 @@ Node.jsであれば `Buffer.from( canvas.outputBitmapByte( frame ) )` のよう�
 
 一応ビルド済みです。
 
-``` sh
+```sh
 npm run build
 ```
 
@@ -292,27 +305,27 @@ npm run build
 
 以下コマンドで普通の全テストが可能です。
 
-``` sh
+```sh
 npm run test
 ```
 
 以下のように個別対応やモード指定も可能です。
 
-``` sh
+```sh
 npm run test -- OPTION FILES...
 ```
 
-* OPTION
-  * `--binary`
-  * `-b`
-    * バイナリモード（モノクロビットマップ）でテストします。
-  * `--debug`
-  * `-d`
-    * デバッグモードでテストします。いつもより出力が多いです。
-* FILES
-  * テストするフォルダを指定すると、そのテストだけ行います。
-    * `npm run test -- 0000_1_H`
-  * 複数指定も可能です。指定がない場合は全てのテストを行います。
+- OPTION
+  - `--binary`
+  - `-b`
+    - バイナリモード（モノクロビットマップ）でテストします。
+  - `--debug`
+  - `-d`
+    - デバッグモードでテストします。いつもより出力が多いです。
+- FILES
+  - テストするフォルダを指定すると、そのテストだけ行います。
+    - `npm run test -- 0000_1_H`
+  - 複数指定も可能です。指定がない場合は全てのテストを行います。
 
 ## Add
 
@@ -331,25 +344,26 @@ test/
     sample.txt        ... Text mode sample.
 ```
 
-* NNNN
-  * テストの番号を決めるだけのものです。とりあえず `0000` から始めています。
-* VERSION
-  * QRコードのバージョンで、`1` ～ `40`です。
-* LEVEL
-  * QRコードのレベルで、`L` `M` `Q` `H` のどれかです。
-* test.txt
-  * QRコードを生成するための文字列です。
-* sample.png
-  * テストの正解になるQRコードのサンプルです。テストには使われません。完全なサンプルです。
+- NNNN
+  - テストの番号を決めるだけのものです。とりあえず `0000` から始めています。
+- VERSION
+  - QRコードのバージョンで、`1` ～ `40`です。
+- LEVEL
+  - QRコードのレベルで、`L` `M` `Q` `H` のどれかです。
+- test.txt
+  - QRコードを生成するための文字列です。
+- sample.png
+  - テストの正解になるQRコードのサンプルです。テストには使われません。完全なサンプルです。
 
 #### Binary
 
-Microsoftのモノクロビットマップでのテストを行います。
-正解ファイルは `sample.bmp` です。
+Microsoftのモノクロビットマップでのテストを行います。 正解ファイルは
+`sample.bmp` です。
 
 QRコードの余白を取り除き、1マス1pxにした最小QRコードが正解データとして使われます。
 
-また、Microsoft ペイントでは、最小状態でモノクロビットマップに変換すると、QRコードが破壊されます。
+また、Microsoft
+ペイントでは、最小状態でモノクロビットマップに変換すると、QRコードが破壊されます。
 そのため、一度2倍や4倍などの大きめのQRコードをモノクロビットマップに変換した後、リサイズしてください。
 
 #### Text
@@ -357,18 +371,20 @@ QRコードの余白を取り除き、1マス1pxにした最小QRコードが正
 テキスト出力したQRコードでテストを行います。改行コードは無視するような作りになっているはずです。
 正解ファイルは `sample.txt` です。
 
-QRコードの余白を取り除き、白は [`  `] 黒は [`██`] にした最小QRコードが正解データとして使われます。
+QRコードの余白を取り除き、白は [``] 黒は [`██`]
+にした最小QRコードが正解データとして使われます。
 注意事項として、デフォルトの設定で `print` した時と白黒が逆になっています。
 （理由は後述するコンバーターで見やすくするのと、白黒入れ替えのテストも兼ねている。）
 
 一応きれいなQRコードを最小のテキストQRコードに変換するプログラムも用意されています。
-ブラウザで `docs/index.html` を開くか、https://hirokimiyaoka.github.io/QRLite/ にアクセスしてください。
+ブラウザで `docs/index.html` を開くか、https://hirokimiyaoka.github.io/QRLite/
+にアクセスしてください。
 
 # Other
 
 ## TODO
 
-* typedocs
-* QRPrintコマンド
-  * 文字列与えるとその場で出力するコマンドとか作りたい。
-  * qrplintとかqrimageとか。
+- typedocs
+- QRPrintコマンド
+  - 文字列与えるとその場で出力するコマンドとか作りたい。
+  - qrplintとかqrimageとか。
