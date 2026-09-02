@@ -91,6 +91,7 @@ export interface QRLiteBitCanvas
 	 * @param mask QRCode mask number.
 	 */
 	drawQRInfo( level?: QRLiteLevel, mask?: number ): this;
+	drawVersionInfo( version: number ): this;
 	drawTimingPattern(): this;
 	drawFinderPattern( x: number, y: number ): this;
 	drawAlignmentPattern( x: number, y: number ): this;

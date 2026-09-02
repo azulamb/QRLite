@@ -58,6 +58,8 @@ export function convert( data: string, option?: QRLiteConvertOption )
 
 		public countByteSize() { return Math.ceil( this.wbit / 8 ); }
 
+		public remainingBitSize() { return this.byte.length * 8 - this.wbit; }
+
 		public get() { return this.byte; }
 
 		public addBit( ...bitarray: (number|boolean)[] )
@@ -74,7 +76,7 @@ export function convert( data: string, option?: QRLiteConvertOption )
 
 		public add0Bit( count?: number )
 		{
-			if ( count === undefined ) { count = this.wbit % 8; }
+			if ( count === undefined ) { count = ( 8 - this.wbit % 8 ) % 8; }
 			this.wbit += count;
 		}
 
@@ -433,6 +435,29 @@ export function convert( data: string, option?: QRLiteConvertOption )
 			return this;
 		}
 
+		public drawVersionInfo( version: number )
+		{
+			if ( version < 7 ) { return this; }
+
+			let remainder = version;
+			for ( let i = 0 ; i < 12 ; ++i )
+			{
+				remainder = ( remainder << 1 ) ^ ( ( remainder >>> 11 ) * 0x1F25 );
+			}
+			const data = ( version << 12 ) | remainder;
+
+			for ( let i = 0 ; i < 18 ; ++i )
+			{
+				const black = ( ( data >>> i ) & 1 ) !== 0;
+				const a = this.width - 11 + i % 3;
+				const b = Math.floor( i / 3 );
+				this.drawPixel( a, b, black );
+				this.drawPixel( b, a, black );
+			}
+
+			return this;
+		}
+
 		public drawFinderPattern( x: number, y: number )
 		{
 			const pattern =
@@ -645,20 +670,11 @@ export function convert( data: string, option?: QRLiteConvertOption )
 			point += this.count2x2Blocks( bitarray, canvas.width, canvas.height) * 3;
 
 			// 3. http://bagpack.hatenablog.jp/entry/2016/12/06/173428
-			if ( this.existsBadPattern( bitarray, canvas.width, canvas.height ) )
-			{
-				point += 40;
-			}
+			point += this.countBadPatterns( bitarray, canvas.width, canvas.height ) * 40;
 
 			// 4.
-			const black = this.countBitarray( bitarray, W );
-			const per = Math.floor( black * 100 / bitarray.length );
-			let k = Math.abs( per - 50 );
-			while ( 5 <= k )
-			{
-				point += 10;
-				k -= 5;
-			}
+			const black = this.countBitarray( bitarray, B );
+			point += Math.floor( Math.abs( black * 20 - bitarray.length * 10 ) / bitarray.length ) * 10;
 
 			return point;
 		}
@@ -682,6 +698,7 @@ export function convert( data: string, option?: QRLiteConvertOption )
 					color = bitarray[ y * width + x ];
 					count = 1;
 				}
+				if ( 5 <= count ) { lines.push( count ); }
 			}
 
 			for ( let x = 0 ; x < width ; ++x )
@@ -699,6 +716,7 @@ export function convert( data: string, option?: QRLiteConvertOption )
 					color = bitarray[ y * width + x ];
 					count = 1;
 				}
+				if ( 5 <= count ) { lines.push( count ); }
 			}
 
 			return lines;
@@ -724,53 +742,44 @@ export function convert( data: string, option?: QRLiteConvertOption )
 			return count;
 		}
 
-		private existsBadPattern( bitarray: boolean[], width: number, height: number )
+		private countBadPatterns( bitarray: boolean[], width: number, height: number )
 		{
 			const bad = [ B, W, B, B, B, W, B ];
+			let count = 0;
 
 			for ( let y = 0 ; y < height ; ++y )
 			{
-				let s = 0;
-				for ( let x = 0 ; x < width ; ++x )
+				for ( let x = 0 ; x <= width - bad.length ; ++x )
 				{
-					if ( bitarray[ y * width + x ] === bad[ s ] )
+					let matches = true;
+					for ( let i = 0 ; i < bad.length ; ++i )
 					{
-						++s;
-						if ( bad.length <= s )
-						{
-							if ( 10 <= x && !bitarray[ y * width + x - 10 ] && !bitarray[ y * width + x - 9 ] && !bitarray[ y * width + x - 8 ] && !bitarray[ y * width + x - 7 ] ) { return true; }
-							if ( x  + 4 < width && !bitarray[ y * width + x + 1  ] && !bitarray[ y * width + x + 2 ] && !bitarray[ y * width + x + 3 ] && !bitarray[ y * width + x + 4 ] ) { return true; }
-							s = 5;
-						}
-					} else
-					{
-						s = ( bitarray[ y * width + x ] === bad[ s ] ) ? 1 : 0;
+						if ( bitarray[ y * width + x + i ] !== bad[ i ] ) { matches = false; break; }
 					}
+					if ( !matches ) { continue; }
+					const before = 4 <= x && !bitarray[ y * width + x - 1 ] && !bitarray[ y * width + x - 2 ] && !bitarray[ y * width + x - 3 ] && !bitarray[ y * width + x - 4 ];
+					const after = x + 10 < width && !bitarray[ y * width + x + 7 ] && !bitarray[ y * width + x + 8 ] && !bitarray[ y * width + x + 9 ] && !bitarray[ y * width + x + 10 ];
+					if ( before || after ) { ++count; }
 				}
 			}
 
 			for ( let x = 0 ; x < width ; ++x )
 			{
-				let s = 0;
-				for ( let y = 0 ; y < height ; ++y )
+				for ( let y = 0 ; y <= height - bad.length ; ++y )
 				{
-					if ( bitarray[ y * width + x ] === bad[ s ] )
+					let matches = true;
+					for ( let i = 0 ; i < bad.length ; ++i )
 					{
-						++s;
-						if ( bad.length <= s )
-						{
-							if ( 10 <= y && !bitarray[ ( y - 10 ) * width + x ] && !bitarray[ ( y - 9 ) * width + x ] && !bitarray[ ( y - 8 ) * width + x ] && !bitarray[ ( y  - 7 ) * width + x ] ) { return true; }
-							if ( y  + 4 < width && bitarray[ ( y + 1 ) * width + x  ] && bitarray[ ( y + 2 ) * width + x ] && bitarray[ ( y + 3 ) * width + x ] && bitarray[ ( y + 4 ) * width + x ] ) { return true; }
-							s = 5;
-						}
-					} else
-					{
-						s = ( bitarray[ y * width + x ] === bad[ s ] ) ? 1 : 0;
+						if ( bitarray[ ( y + i ) * width + x ] !== bad[ i ] ) { matches = false; break; }
 					}
+					if ( !matches ) { continue; }
+					const before = 4 <= y && !bitarray[ ( y - 1 ) * width + x ] && !bitarray[ ( y - 2 ) * width + x ] && !bitarray[ ( y - 3 ) * width + x ] && !bitarray[ ( y - 4 ) * width + x ];
+					const after = y + 10 < height && !bitarray[ ( y + 7 ) * width + x ] && !bitarray[ ( y + 8 ) * width + x ] && !bitarray[ ( y + 9 ) * width + x ] && !bitarray[ ( y + 10 ) * width + x ];
+					if ( before || after ) { ++count; }
 				}
 			}
 
-			return false;
+			return count;
 		}
 
 		private countBitarray( bitarray: boolean[], target: boolean )
@@ -834,6 +843,7 @@ export function convert( data: string, option?: QRLiteConvertOption )
 			this.canvas.drawFinderPattern( -1, -1 );
 			this.canvas.drawFinderPattern( w - 8, -1 );
 			this.canvas.drawFinderPattern( -1, h - 8 );
+			this.canvas.drawVersionInfo( this.version );
 			if ( Info.Data[ this.version ].Alignment )
 			{
 				Info.Data[ this.version ].Alignment.forEach( ( pos ) =>
@@ -864,6 +874,7 @@ export function convert( data: string, option?: QRLiteConvertOption )
 
 		public createDataCode()
 		{
+			if ( !this.rawdata || this.version <= 0 ) { throw new RangeError( 'Data is not set or is too large.' ); }
 			const blocks = this.createDataBlock( this.level, this.version, this.rawdata );
 			const ecblocks = this.createECBlock( this.level, this.version, blocks );
 
@@ -918,7 +929,7 @@ export function convert( data: string, option?: QRLiteConvertOption )
 		{
 			const newlevel = this.setLevel( option.level || this.level );
 
-			this.setData( datastr );
+			if ( this.setData( datastr ) === null ) { throw new RangeError( 'Data is too large for a QR code.' ); }
 
 			if ( typeof option.version === 'number' && 1 <= option.version && option.version <= 40 )
 			{
@@ -949,7 +960,7 @@ export function convert( data: string, option?: QRLiteConvertOption )
 			byte.addByte( data );
 
 			// End pattern.
-			byte.addBit( 0, 0, 0, 0 );
+			byte.add0Bit( Math.min( 4, byte.remainingBitSize() ) );
 
 			byte.add0Bit();
 
@@ -970,49 +981,27 @@ export function convert( data: string, option?: QRLiteConvertOption )
 
 			return blocks.map( ( block ) =>
 			{
-				let f: { k: number, x: number }[] = [];
-				const ecblock = new Uint8Array( countEC );
-
-				let count = ecblock.length + block.length;
-				block.forEach( ( num, i ) =>
-				{
-					f.push( { k: num, x: --count } );
-				} );
-				while ( 0 < count ) { f.push( { k: 0, x: --count } ); }
+				const polynomial = new Uint8Array( block.length + countEC );
+				polynomial.set( block );
 
 				for ( let i = 0 ; i < block.length ; ++i )
 				{
-					const k = Info.ItoE[ f[ i ].k ];
-					const px = f[ i ].x - g[ 0 ].x;
-
-					const gax = g.map( ( v, index ) =>
+					if ( polynomial[ i ] === 0 ) { continue; }
+					const exponent = Info.ItoE[ polynomial[ i ] ];
+					for ( let j = 0 ; j < g.length ; ++j )
 					{
-						const e = ( k + v.a ) % 255;
-						return { k: Info.ItoE.indexOf( e ), x: v.x + px };
-					} );
-
-					f = f.map( ( v, index ) =>
-					{
-						if ( index < i ) { return { k: 0, x: v.x }; }
-						return { k: (gax[ index - i ] ? v.k ^ gax[ index - i ].k : 0), x: v.x };
-					} );
+						const value = Info.ItoE.indexOf( ( exponent + g[ j ].a ) % 255 );
+						polynomial[ i + j ] ^= value;
+					}
 				}
 
-				for ( let i =0 ; i < ecblock.length ; ++i )
-				{
-					ecblock[ i ] = f[ i + block.length ].k;
-				}
-
-				return ecblock;
+				return polynomial.slice( block.length );
 			} );
 		}
 
 		private convertStringByte( data: string )
 		{
-			return ( new Uint8Array( data.split( '' ).map( ( c ) =>
-			{
-				return c.charCodeAt( 0 );
-			} ) ) );
+			return new TextEncoder().encode( data );
 		}
 
 		private searchVersion( datasize: number, level: QRLiteLevel ): QRLiteVersion | 0
@@ -1021,7 +1010,7 @@ export function convert( data: string, option?: QRLiteConvertOption )
 
 			for ( let i = 0 ; i < versions.length ; ++i )
 			{
-				if ( datasize < Info.Data[ parseInt( versions[ i ] ) ][ level ].Size ) { return <QRLiteVersion>parseInt( versions[ i ] ); }
+				if ( datasize <= Info.Data[ parseInt( versions[ i ] ) ][ level ].Size ) { return <QRLiteVersion>parseInt( versions[ i ] ); }
 			}
 
 			return 0;
@@ -1029,7 +1018,7 @@ export function convert( data: string, option?: QRLiteConvertOption )
 
 		private calcLengthBitarray( datasize: number, version: number, level: QRLiteLevel )
 		{
-			const bitlen = 8;
+			const bitlen = version <= 9 ? 8 : 16;
 			const byte: number[] = [];
 			for ( let i = bitlen - 1 ; 0 <= i ; --i )
 			{
@@ -2132,10 +2121,10 @@ export function convert( data: string, option?: QRLiteConvertOption )
 		Mask:
 		{
 			0: ( i: number, j: number ) => { return ( i + j ) % 2 === 0; },
-			1: ( i: number, j: number ) => { return i % 2 === 0; },
-			2: ( i: number, j: number ) => { return j % 3 === 0; },
+			1: ( i: number, j: number ) => { return j % 2 === 0; },
+			2: ( i: number, j: number ) => { return i % 3 === 0; },
 			3: ( i: number, j: number ) => { return ( i + j ) % 3 === 0; },
-			4: ( i: number, j: number ) => { return ( Math.floor( i / 2 ) + Math.floor( j / 3 ) ) % 2 === 0; },
+			4: ( i: number, j: number ) => { return ( Math.floor( j / 2 ) + Math.floor( i / 3 ) ) % 2 === 0; },
 			5: ( i: number, j: number ) => { return ( i * j ) % 2 + ( i * j ) % 3 === 0; },
 			6: ( i: number, j: number ) => { return ( ( i * j ) % 2 + ( i * j ) % 3 ) % 2 === 0; },
 			7: ( i: number, j: number ) => { return ( ( i * j ) % 3 + ( i + j ) % 2 ) % 2 === 0; },
