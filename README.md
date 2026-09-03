@@ -1,390 +1,190 @@
 # QRLite
 
-QRコードの勉強を兼ねてTypeScriptのみで作成したQRコード生成機です。他モジュールへの依存も型定義の`@types/node`を除いてありません。
-（簡易版ということでとりあえず半角英数の文字列のみOKな8bit版を生成可能。）
+QRLiteは、外部ライブラリに依存しないDeno向けのTypeScript製QRコード生成ライブラリです。
 
-勉強も兼ねているので、マスク処理前、マスク処理した8種類のデータも取得できるようにしている他、モノクロビットマップのバイナリデータを出力可能です。
-（実際にファイルとして出力する場合、fsなどで出力してください。）
+Byteモード、誤り訂正レベルL/M/Q/H、Version
+1～40、8種類のマスクに対応しています。
+文字列はUTF-8へ変換して格納します。生成途中のデータコード、誤り訂正コード、マスク適用前後のビット列も取得できます。
 
-# Install
+## 必要環境
 
-```sh
-npm i qrlite
-```
+- Deno 2.x
 
-# Sample
+## 使い方
 
-## Output Bitmap(Node.js sample)
-
-```js
-const QRLite = require("qrlite");
-function OutputBitmapFile(name, canvas, frame) {
-  if (frame === undefined) frame = 4;
-  var fs = require("fs");
-  var buf = Buffer.from(canvas.outputBitmapByte(frame));
-  fs.writeFileSync(name, buf);
-}
-OutputBitmapFile("test.bmp", QRLite.convert("test"));
-```
-
-## Browser sample
-
-```html
-<script src="./qrlite.js"></script>
-<script>
-console.log(QRLite);
-</script>
-```
-
-## QRCode WebComponents(Browser sample2)
-
-https://github.com/HirokiMiyaoka/QRCodeComponent
-
-QRコードを生成するWebComponentsです。
-
-QRコードの生成部分はこのQRLiteを使い、WebComponentsを使って実際のViewと連携しています。
-
-## TypeScript sample
+公開APIはルートの`mod.ts`に集約されています。
 
 ```ts
-import * as QRLite from "qrlite";
+import {
+  convert,
+  Generator,
+  type QRLiteBitCanvas,
+  type QRLiteConvertOption,
+} from "./mod.ts";
 ```
 
-上のように読み込めば後は普通に `QRLite` が使えます。
+### QRコードを生成する
 
-# Debug
+```ts
+import { convert } from "./mod.ts";
 
-以下のようにしてQRコードのビットデータを作成しています。（中身はほぼ`QRLite.Generator.convert`でやっていること。）
-途中で結果を出力などしていけばいろいろ見れるはず。
+const canvas = convert("https://example.com", {
+  level: "Q",
+});
 
-```js
-const qr = new QRLite.Generator();
-
-// Set level.
-qr.setLevel("Q");
-
-// Set data.
-qr.setData("test");
-
-// datacode[ 0 ] = Data block, datacode[ 1 ] = EC Block
-const datacode = qr.createDataCode();
-
-// Raw QR Code.
-qr.drawData(datacode[0], datacode[1]);
-const rawCanvas = qr.get();
-
-// Get masked canvases.(masked[ 0-7 ] = QRLite.Canvas)
-const masked = qr.createMaskedQRCode();
-
-// Print QRCode points.
-// console.log( qr.evaluateQRCode( masked ) );
-
-// Select mask number.
-const maskNum = qr.selectQRCode(masked);
-
-// QR Code.
-const canvas = masked[maskNum];
-
-// Output to console.
+console.log(canvas.width, canvas.height);
 canvas.print();
 ```
 
-なお、QRコードは黒=1という扱いらしいので、それに従って黒は `1` や `true`
-で、白は `0` や `false`にします。
+`level`を省略した場合は`Q`、`version`と`mask`を省略した場合は入力データから自動選択されます。
 
-一応仕様上存在しないのですが、生成中のQRコードには透明な部分もあるので、そこは
-`undefined` として扱います。
+### 生成オプション
 
-## QRLite.convert(data: string, option: QRLiteConvertOption): QRLiteBitCanvas
+```ts
+type QRLiteLevel = "L" | "M" | "Q" | "H";
+type QRLiteMask = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
-```
-type QRLiteLevel = 'L' | 'M' | 'Q' | 'H';
 interface QRLiteConvertOption {
-    level?: QRLiteLevel;
-    version?: number;
-    mask?: number;
+  level?: QRLiteLevel;
+  version?: QRLiteVersion;
+  mask?: QRLiteMask;
 }
 ```
 
-とりあえず文字列を与えるとQRコードを生成して `QRLite.BitCanvas` を返します。
+`QRLiteVersion`は1～40の整数リテラル型です。正確な型定義は[`src/types.ts`](./src/types.ts)を参照してください。
 
-レベルを省略すると `Q` が指定されます。
+入力がVersion 40の容量を超えた場合、`convert()`は`RangeError`を送出します。
+指定したVersionが入力データに対して小さすぎる場合は、格納可能な最小Versionが使用されます。
 
-## QRLite.Generator
+### BMPファイルとして保存する
 
-QRコードを生成するクラスです。 主な演算周りを行います。
+```ts
+import { convert } from "./mod.ts";
 
-BitやByte周りの操作は別クラスで行い、QRコードの画像としてのBit列は
-`QRLite.BitCanvas` を使って出力しています。
+const canvas = convert("Deno");
+const bitmap = new Uint8Array(canvas.outputBitmapByte());
 
-初めにあるように丁寧に出力した場合、データのバイト列、誤り訂正コードのバイト列の他、マスク処理を行う前のQRコードやマスク処理を行った結果の8種類のQRコードも
-`QRLite.BitCanvas` で受け取ることが可能です。
-
-（例えば最後の評価部分だけ自分でやるとか、データや誤り訂正コードだけ自作とかも可能。）
-
-### convert(dataStr: string, option?: QRLiteConvertOption): QRLiteBitCanvas
-
-データを与えることで一番良いQRコードを返します。レベルの指定も可能です。
-
-`QRLite.convert` は `new QRLite.Generator()`
-してこのメソッドを呼び出しているだけです。
-
-### get(): QRLiteBitCanvas
-
-現在のQRコードの状態を返します。
-
-### getLevel(): QRLiteLevel
-
-現在のレベルを返します。
-
-### setLevel(level: QRLiteLevel): QRLiteLevel
-
-レベルを設定します。
-なおデータをいろいろ入れた後に入れても意味がないので、`setData` の前に行うか
-`setData` をもう一度実行しましょう。
-
-また、無効なレベルを設定した場合、実際に使用可能なレベルが設定されます。
-実際に設定されたレベルは返り値で取得可能です。
-
-### getVersion() => number
-
-現在のバージョンを知ることができますが、`setData`
-の後でないと正確な情報は出てきません。
-
-バージョンは現在のレベルとデータ量に応じて変化します。
-
-### setRating(rating?: QRLiteRating): void
-
-```
-interface QRLiteRating {
-    calc: (canvas: QRLiteBitCanvas) => number;
-}
+await Deno.writeFile("qrcode.bmp", bitmap);
 ```
 
-`interface QRLite.Rating { calc: ( canvas: BitCanvas ) => number; }`
-を継承したクラスのインスタンスを渡すと、その評価器を使ってQRコードを評価します。
+実行には書き込み権限が必要です。
 
-`QRLite.Rating` は `calc: ( canvas: BitCanvas ) => number`
-さえ実装していれば良いです。
+```sh
+deno run --allow-write example.ts
+```
 
-ちなみに、返す値が大きければ大きいほど減点が大きく悪いQRコードとなります。
+`outputBitmapByte(frame)`の`frame`は周囲の白枠幅です。省略時はQRコードの仕様に沿った4モジュールになります。
+出力は1モジュール1ピクセルの1bit BMPです。表示用途では整数倍で拡大してください。
 
-引数に何も与えない場合はデフォルトの評価器を再設定します。
+## Generator
 
-### setData( data: string | Uint8Array ) => UInt8Array
+生成工程を個別に操作する場合は`Generator`を使用します。
 
-QRコードのデータをセットします。
+```ts
+import { Generator } from "./mod.ts";
 
-この時点でバージョンが設定され、 `QRLite.BitCanvas` が最低限準備されます。
+const generator = new Generator();
 
-また返り値である文字列をバイト配列にしたデータが保持されることになります。
+generator.setLevel("Q");
+generator.setData("test");
 
-### createDataCode() => [ 0: UInt8Array, 1: UInt8Array ]
+const [dataCode, errorCorrectionCode] = generator.createDataCode();
 
-すでにセットされたレベル、バージョン、データを元に、QRコードに書き込める状態のバイト列([0])と誤り訂正コード([1])を返します。
+generator.drawData(dataCode, errorCorrectionCode);
 
-### drawData( data: Uint8Array, ec: Uint8Array )
+const candidates = generator.createMaskedQRCode();
+const mask = generator.selectQRCode(candidates);
+const canvas = candidates[mask];
 
-データと誤り訂正コードのバイト列を与えることで、 `QRLite.BitCanvas`
-にデータを書き込みます。
+console.log({
+  version: generator.getVersion(),
+  level: generator.getLevel(),
+  mask,
+});
 
-この時点で生のQRコードが得られます。
+canvas.print();
+```
 
-### createMaskedQRCode(): QRLiteBitCanvas[]
+主なメソッドは次のとおりです。
 
-マスク処理を行った `QRLite.BitCanvas` を8つ得られます。
-
-### selectQRCode(qrcodes: QRLiteBitCanvas[]): number
-
-マスク処理を行った `QRLite.BitCanvas` の配列を与えると、その中で最も減点が低い
-`QRLite.BitCanvas` の番号が返されます。
-
-基本的には `createMaskedQRCode()` で得られた結果をそのまま与えます。
-
-### evaluateQRCode(qrcodes: QRLiteBitCanvas[]): number[]
-
-上で使われている、QRコードの評価です。
-
-`QRLite.BitCanvas` の配列を与えると与えた順番に評価のポイントが返されます。
-
-仕様では減点ですが、こちらでは加点を行うため、正の値となっています。
-この結果、仕様では最も減点が少ないQRコードを採用することになっていますが、この場合は最もポイントが低いQRコードが評価の良いQRコードとなります。
+- `setLevel(level)`: 誤り訂正レベルを設定します。
+- `setData(data)`:
+  `string`または`Uint8Array`を設定し、Versionを決定します。容量超過時は`null`を返します。
+- `setVersion(version)`: Versionを指定します。0または省略時は自動選択です。
+- `createDataCode()`:
+  インターリーブ済みのデータコードと誤り訂正コードを返します。
+- `drawData(data, ec)`: キャンバスへコード語を書き込みます。
+- `createMaskedQRCode()`: マスク0～7を適用した8個の候補を返します。
+- `evaluateQRCode(candidates)`:
+  各候補のペナルティ値を返します。小さい値ほど良い候補です。
+- `selectQRCode(candidates)`: 最小ペナルティのマスク番号を返します。
+- `convert(data, option)`: 上記工程をまとめて実行します。
+- `get()`: 現在のキャンバスを返します。
+- `getVersion()`、`getLevel()`、`getLastMask()`: 現在の設定値を返します。
+- `setRating(rating)`:
+  カスタム評価器を設定します。省略すると標準評価器へ戻ります。
 
 ## QRLiteBitCanvas
 
-QRコードのBit列を管理するクラスです。
+QRコードの各モジュールは一次元のビット配列で管理されます。
 
-### clone() => QRLite.BitCanvas
+- `true`: 黒
+- `false`: 白
+- `undefined`: 生成途中の未設定領域
 
-今の自分の状態をコピーした `QRLite.BitCanvas` を生成します。
-生のQRコードができた後マスク処理のためにコピーする際などに使います。
+主なメソッド:
 
-### getPixel( x: number, y: number ) => boolean|undefined
+- `getPixel(x, y)`: 指定座標の値を取得します。
+- `getPixels()`: 全モジュールを一次元配列で取得します。
+- `clone()`: キャンバスを複製します。
+- `sprint(option)`: テキスト表現を返します。
+- `print(white, black, none)`: テキスト表現をコンソールへ出力します。
+- `outputBitmapByte(frame)`: 1bit BMPのバイト配列を返します。
 
-指定座標における色を返します。
+`sprint()`と`print()`の既定表示は、白が`██`、黒が半角スペース2文字、未設定が`--`です。
+背景が黒いターミナルでの表示を想定しています。
 
-`true` が黒、 `false` が白、 `undefined` が透明です。
+## 公開API
 
-この情報を元に `HTMLCanvasElement` に描画したりします。
+`mod.ts`から次の値をexportします。
 
-なお、処理が面倒なのでTypeScriptの型上ではundefinedはないものとして扱われています。
+- `convert`
+- `Generator`
+- `Info`
+- `Version`
+- `White`
+- `Black`
 
-### getPixels() => <boolean|undefined>[]
+関連する型もすべて`mod.ts`から`export type`されています。
+`Info`は容量、RSブロック、生成多項式、マスク式などの内部テーブルを調査する高度な用途向けです。
 
-全ての色を配列で取得します。
+## qrprint
 
-### drawPixel( x: number, y: number, black: boolean ) => this
-
-指定した座標に黒(`true`)か白(`false`)を描画します。
-
-範囲外は無視されます。
-
-### reverse( func: ( i: number, j: number ) => boolean, mask: boolean[] ) => this
-
-第一引数はx,y座標を与えられるとその場のドットを反転させる場合にtrueを返す関数を与えます。
-
-なお、第二引数は全ドットに対応していて、falseの場合は処理をそもそも行いません。
-
-QRコードのシンボルを避けてマスク処理を行う場合に使います。
-
-### drawQRByte( byte: Uint8Array, cursor?: { x: number, y: number, up: boolean, right: boolean } ) => { x: number, y: number, up: boolean, right: boolean }
-
-QRコードのデータを書き込みます。
-
-バイトの配列をビットにして書き込む際、現在透明なドットにのみ影響を与えます。
-
-また、カーソルの概念があり、省略すれば開始点（右下）からで、次回以降このメソッドを呼び出す時にどこから開始するかのカーソルを返します。
-
-カーソルは右の点を基準とし、今進んでいる方向(`up`=`true`なら上に進む)、今右を調べているかどうか(`right`=`true`)の情報も持っています。
-
-基本的にはQRコードのシンボルなどを全て描画した後使うメソッドです。
-
-### sprint( option?: { white?: string, black?: string, none?: string, newline?: string } )
-
-現在のQRコードを文字列にして返します。
-
-初期設定では白を `██`、黒を ``、空を `--`、改行を `\n` で表示します。
-
-背景黒、文字色白のターミナルの場合、きれいなQRコードを出力するはずです。
-
-白黒空改行はそれぞれ引数に与えれば変更可能です。
-
-以下の `print()` は内部的にはこの `sprint()` を利用しています。
-
-### print( white: string = '██', black: string = ' ', none: string = '--' )
-
-`console.log` に現在のQRコードを出力します。
-
-初期設定では白を `██`、黒を ``、空を `--` で表示します。
-
-背景黒、文字色白のターミナルの場合、きれいなQRコードを出力するはずです。
-
-白黒空はそれぞれ引数に与えれば変更可能です。
-
-### outputBitmapByte( frame: number = 4 ) => number[]
-
-モノクロビットマップのバイトが入った数値の配列を返します。
-
-Node.jsであれば `Buffer.from( canvas.outputBitmapByte( frame ) )`
-のようにしてBufferを作り、それをファイルに書き込めば良いです。
-
-何も指定しない場合はQRコードの周りに1pxの白枠を追加します。
-もし白枠を必要としない場合は0を与えてください。
-
-# Test
-
-## Build
-
-一応ビルド済みです。
+Unicodeの半ブロック文字を使い、QRコードをターミナルへ表示できます。既定では黒背景・白文字のターミナル向けに、仕様推奨の4モジュール分の余白を付けて出力します。
 
 ```sh
-npm run build
+deno task qrprint "https://example.com"
 ```
 
-## Run
-
-以下コマンドで普通の全テストが可能です。
+白背景・黒文字のターミナルでは`--invert`（`-i`）、余白を変更する場合は`--margin`（`-m`）を指定します。
 
 ```sh
-npm run test
+deno task qrprint --invert --margin 2 "Hello, Deno!"
 ```
 
-以下のように個別対応やモード指定も可能です。
+ローカルコマンドとしてインストールする場合:
 
 ```sh
-npm run test -- OPTION FILES...
+deno install --global --name qrprint ./tools/qrprint.ts
+qrprint "https://example.com"
 ```
 
-- OPTION
-  - `--binary`
-  - `-b`
-    - バイナリモード（モノクロビットマップ）でテストします。
-  - `--debug`
-  - `-d`
-    - デバッグモードでテストします。いつもより出力が多いです。
-- FILES
-  - テストするフォルダを指定すると、そのテストだけ行います。
-    - `npm run test -- 0000_1_H`
-  - 複数指定も可能です。指定がない場合は全てのテストを行います。
+利用可能なオプションは`qrprint --help`で確認できます。ハイフンから始まる文字列を変換する場合は、`qrprint -- "-text"`のように`--`でオプションの終端を指定します。
 
-## Add
+## 開発
 
-### Base
+開発環境、ファイル構成、テスト、リリース準備については[DEVELOPMENT.md](./DEVELOPMENT.md)を参照してください。
 
-テストの追加はバイナリとテキスト両方可能です。
+## License
 
-基本構造は以下のようになっています。
-
-```text
-test/
-  NNNN_VERSION_LEVEL/ ... Test case
-    test.txt          ... QRCode text.
-    sample.png        ... Sample for human.
-    sample.bmp        ... Binary mode sample.
-    sample.txt        ... Text mode sample.
-```
-
-- NNNN
-  - テストの番号を決めるだけのものです。とりあえず `0000` から始めています。
-- VERSION
-  - QRコードのバージョンで、`1` ～ `40`です。
-- LEVEL
-  - QRコードのレベルで、`L` `M` `Q` `H` のどれかです。
-- test.txt
-  - QRコードを生成するための文字列です。
-- sample.png
-  - テストの正解になるQRコードのサンプルです。テストには使われません。完全なサンプルです。
-
-#### Binary
-
-Microsoftのモノクロビットマップでのテストを行います。 正解ファイルは
-`sample.bmp` です。
-
-QRコードの余白を取り除き、1マス1pxにした最小QRコードが正解データとして使われます。
-
-また、Microsoft
-ペイントでは、最小状態でモノクロビットマップに変換すると、QRコードが破壊されます。
-そのため、一度2倍や4倍などの大きめのQRコードをモノクロビットマップに変換した後、リサイズしてください。
-
-#### Text
-
-テキスト出力したQRコードでテストを行います。改行コードは無視するような作りになっているはずです。
-正解ファイルは `sample.txt` です。
-
-QRコードの余白を取り除き、白は [``] 黒は [`██`]
-にした最小QRコードが正解データとして使われます。
-注意事項として、デフォルトの設定で `print` した時と白黒が逆になっています。
-（理由は後述するコンバーターで見やすくするのと、白黒入れ替えのテストも兼ねている。）
-
-一応きれいなQRコードを最小のテキストQRコードに変換するプログラムも用意されています。
-ブラウザで `docs/index.html` を開くか、https://hirokimiyaoka.github.io/QRLite/
-にアクセスしてください。
-
-# Other
-
-## TODO
-
-- typedocs
-- QRPrintコマンド
-  - 文字列与えるとその場で出力するコマンドとか作りたい。
-  - qrplintとかqrimageとか。
+MIT

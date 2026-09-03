@@ -1,10 +1,15 @@
 {
-  "exports": "./mod.ts",
+  "exports": {
+    ".": "./mod.ts",
+    "./qrprint": "./tools/qrprint.ts"
+  },
   "tasks": {
     "build": "deno bundle --minify --platform=browser --output=./docs/qrlite.js ./browser.ts",
-    "check": "deno check mod.ts test/deno_test.ts",
-    "test": "deno test test/all.test.ts",
-    "verify": "deno task check && deno task test"
+    "check": "deno check mod.ts browser.ts test/all.test.ts test/info.test.ts test/qrprint.test.ts scripts/check_release.ts tools/qrprint.ts",
+    "test": "deno test test/all.test.ts test/info.test.ts test/qrprint.test.ts",
+    "verify": "deno task check && deno task test",
+    "release:check": "deno task verify && deno run --allow-run=git scripts/check_release.ts",
+    "qrprint": "deno run tools/qrprint.ts"
   },
   "fmt": {
     "exclude": ["docs/qrlite.js"]

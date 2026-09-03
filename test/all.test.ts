@@ -1,4 +1,4 @@
-import { Black, convert, Generator, Info, Version, White } from "../mod.ts";
+import { Black, convert, Generator, Info, White } from "../mod.ts";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) {
@@ -7,7 +7,6 @@ function assert(condition: unknown, message: string): asserts condition {
 }
 
 Deno.test("Denoから公開APIをimportできる", () => {
-  assert(Version === "1.1.0", "Versionが一致しません");
   assert(White === false, "Whiteがfalseではありません");
   assert(Black === true, "Blackがtrueではありません");
   assert(Info.Data[1].L.DataCode === 19, "Infoが公開されていません");
