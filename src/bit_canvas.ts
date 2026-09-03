@@ -1,4 +1,4 @@
-import { B, W } from "./constants.ts";
+import { Black as B, White as W } from "./constants.ts";
 import { BitReader } from "./bit_reader.ts";
 import { MonochromeBitmap } from "./bitmap.ts";
 import type { QRLiteBitCanvas, QRLiteLevel } from "./types.ts";

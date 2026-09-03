@@ -4,7 +4,7 @@ export class MonochromeBitmap {
   public output(canvas: QRLiteBitCanvas, frame: number) {
     const width = canvas.width;
     const height = canvas.height;
-    const bitarray = canvas.getPixels();
+    const bitArray = canvas.getPixels();
     const byte: number[] = [];
 
     if (!frame || frame <= 0) frame = 0;
@@ -26,11 +26,11 @@ export class MonochromeBitmap {
     byte.push(...this.numberToLE4Byte(height + frame * 2));
     // Planes
     byte.push(1, 0);
-    // Bit count. Monochro = 1.
+    // Bit count. Monochrome = 1.
     byte.push(1, 0);
     // Compression
     byte.push(0, 0, 0, 0);
-    // Datasize.(after)
+    // DataSize.(after)
     byte.push(0, 0, 0, 0);
     // Option.
     byte.push(196, 14, 0, 0); // Set the same value as MS Paint.
@@ -64,7 +64,7 @@ export class MonochromeBitmap {
       for (x = -frame; x < width + frame; ++x) {
         dot8[w] = (x < 0 || width <= x)
           ? false
-          : dot8[w] = bitarray[y * width + x];
+          : dot8[w] = bitArray[y * width + x];
         if (++w === 8) {
           ++count;
           byte.push(
@@ -109,11 +109,11 @@ export class MonochromeBitmap {
     byte[5] = filesize[3];
 
     // Data size.
-    const datasize = this.numberToLE4Byte(byte.length - 62);
-    byte[34] = datasize[0];
-    byte[35] = datasize[1];
-    byte[36] = datasize[2];
-    byte[37] = datasize[3];
+    const dataSize = this.numberToLE4Byte(byte.length - 62);
+    byte[34] = dataSize[0];
+    byte[35] = dataSize[1];
+    byte[36] = dataSize[2];
+    byte[37] = dataSize[3];
 
     return byte;
   }

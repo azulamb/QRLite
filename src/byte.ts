@@ -1,12 +1,12 @@
-import { B } from "./constants.ts";
+import { Black as B } from "./constants.ts";
 
 export class Byte {
   private byte: Uint8Array;
-  private wbit: number;
+  private wBit: number;
 
-  constructor(bytesize: number) {
-    this.byte = new Uint8Array(bytesize);
-    this.wbit = 0;
+  constructor(byteSize: number) {
+    this.byte = new Uint8Array(byteSize);
+    this.wBit = 0;
   }
 
   public size() {
@@ -14,36 +14,36 @@ export class Byte {
   }
 
   public countByteSize() {
-    return Math.ceil(this.wbit / 8);
+    return Math.ceil(this.wBit / 8);
   }
 
   public remainingBitSize() {
-    return this.byte.length * 8 - this.wbit;
+    return this.byte.length * 8 - this.wBit;
   }
 
   public get() {
     return this.byte;
   }
 
-  public addBit(...bitarray: (number | boolean)[]) {
-    bitarray.forEach((bit) => {
+  public addBit(...bitArray: (number | boolean)[]) {
+    bitArray.forEach((bit) => {
       if (!!bit === B) { // bit == true ... Black
-        this.byte[Math.floor(this.wbit / 8)] |= 1 << (7 - this.wbit % 8);
+        this.byte[Math.floor(this.wBit / 8)] |= 1 << (7 - this.wBit % 8);
       }
-      ++this.wbit;
+      ++this.wBit;
     });
   }
 
   public add0Bit(count?: number) {
-    if (count === undefined) count = (8 - this.wbit % 8) % 8;
-    this.wbit += count;
+    if (count === undefined) count = (8 - this.wBit % 8) % 8;
+    this.wBit += count;
   }
 
   public addByte(data: Uint8Array) {
-    if (this.wbit % 8 === 0) {
+    if (this.wBit % 8 === 0) {
       data.forEach((byte) => {
-        this.byte[Math.floor(this.wbit / 8)] = byte;
-        this.wbit += 8;
+        this.byte[Math.floor(this.wBit / 8)] = byte;
+        this.wBit += 8;
       });
       return;
     }
@@ -62,9 +62,9 @@ export class Byte {
   }
 
   public addByteNumber(byte: number) {
-    if (this.wbit % 8 === 0) {
-      this.byte[Math.floor(this.wbit / 8)] = byte;
-      this.wbit += 8;
+    if (this.wBit % 8 === 0) {
+      this.byte[Math.floor(this.wBit / 8)] = byte;
+      this.wBit += 8;
       return;
     }
     this.addBit(

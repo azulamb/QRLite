@@ -16,8 +16,8 @@ import type {
 export class Generator implements QRLiteGenerator {
   private level: QRLiteLevel;
   private version: QRLiteVersion | 0;
-  private lastmask: QRLiteMask | 0 = 0;
-  private rawdata!: Uint8Array;
+  private lastMask: QRLiteMask | 0 = 0;
+  private rawData!: Uint8Array;
   private canvas!: QRLiteBitCanvas;
   private mask!: boolean[];
   private rating!: QRLiteRating;
@@ -50,7 +50,7 @@ export class Generator implements QRLiteGenerator {
 
   public setVersion(version = 0) {
     version = Math.floor(version);
-    const data = this.rawdata || "";
+    const data = this.rawData || "";
 
     const min = this.searchVersion(data.length, this.level);
 
@@ -84,7 +84,7 @@ export class Generator implements QRLiteGenerator {
   }
 
   public getLastMask() {
-    return this.lastmask;
+    return this.lastMask;
   }
 
   public setRating(rating?: QRLiteRating) {
@@ -92,26 +92,26 @@ export class Generator implements QRLiteGenerator {
   }
 
   public setData(data: string | Uint8Array) {
-    this.rawdata = (typeof data === "string")
+    this.rawData = (typeof data === "string")
       ? this.convertStringByte(data)
       : data;
     this.setVersion();
 
     if (this.version <= 0) return null;
 
-    return this.rawdata;
+    return this.rawData;
   }
 
   public createDataCode() {
-    if (!this.rawdata || this.version <= 0) {
+    if (!this.rawData || this.version <= 0) {
       throw new RangeError("Data is not set or is too large.");
     }
-    const blocks = this.createDataBlock(this.level, this.version, this.rawdata);
-    const ecblocks = this.createECBlock(this.level, this.version, blocks);
+    const blocks = this.createDataBlock(this.level, this.version, this.rawData);
+    const ecBlocks = this.createECBlock(this.level, this.version, blocks);
 
     const datacode: Uint8Array[] = [];
     datacode.push(this.interleaveArrays(blocks));
-    datacode.push(this.interleaveArrays(ecblocks));
+    datacode.push(this.interleaveArrays(ecBlocks));
 
     return datacode;
   }
@@ -124,12 +124,12 @@ export class Generator implements QRLiteGenerator {
 
   public createMaskedQRCode() {
     const masked: QRLiteBitCanvas[] = [];
-    for (let masknum = 0; masknum < 8; ++masknum) {
-      masked.push(this.canvas.clone().reverse(Info.Mask[masknum], this.mask));
+    for (let maskNum = 0; maskNum < 8; ++maskNum) {
+      masked.push(this.canvas.clone().reverse(Info.Mask[maskNum], this.mask));
     }
 
-    masked.forEach((qrcode, masknum) => {
-      qrcode.drawQRInfo(this.level, masknum);
+    masked.forEach((qrcode, maskNum) => {
+      qrcode.drawQRInfo(this.level, maskNum);
     });
 
     return masked;
@@ -143,21 +143,21 @@ export class Generator implements QRLiteGenerator {
 
   public selectQRCode(qrcodes: QRLiteBitCanvas[]) {
     const points = this.evaluateQRCode(qrcodes);
-    let masknum = 0;
-    let minpoint = points[0];
+    let maskNum = 0;
+    let minPoint = points[0];
     for (let i = 1; i < points.length; ++i) {
-      if (points[i] < minpoint) {
-        masknum = i;
-        minpoint = points[i];
+      if (points[i] < minPoint) {
+        maskNum = i;
+        minPoint = points[i];
       }
     }
-    return <QRLiteMask> masknum;
+    return <QRLiteMask> maskNum;
   }
 
-  public convert(datastr: string, option: QRLiteConvertOption = {}) {
-    const newlevel = this.setLevel(option.level || this.level);
+  public convert(dataStr: string, option: QRLiteConvertOption = {}) {
+    const _newLevel = this.setLevel(option.level || this.level);
 
-    if (this.setData(datastr) === null) {
+    if (this.setData(dataStr) === null) {
       throw new RangeError("Data is too large for a QR code.");
     }
 
@@ -175,12 +175,12 @@ export class Generator implements QRLiteGenerator {
 
     const masked = this.createMaskedQRCode();
 
-    this.lastmask =
+    this.lastMask =
       (typeof option.mask === "number" && 0 <= option.mask && option.mask <= 7)
         ? <QRLiteMask> Math.floor(option.mask)
         : this.selectQRCode(masked);
 
-    return masked[this.lastmask];
+    return masked[this.lastMask];
   }
 
   private createDataBlock(
@@ -193,7 +193,7 @@ export class Generator implements QRLiteGenerator {
     // Byte mode.
     byte.addBit(0, 1, 0, 0);
 
-    byte.addBit(...this.calcLengthBitarray(data.length, version, level));
+    byte.addBit(...this.calcLengthBitArray(data.length, version, level));
 
     byte.addByte(data);
 
@@ -241,13 +241,13 @@ export class Generator implements QRLiteGenerator {
   }
 
   private searchVersion(
-    datasize: number,
+    dataSize: number,
     level: QRLiteLevel,
   ): QRLiteVersion | 0 {
     const versions = Object.keys(Info.Data);
 
     for (let i = 0; i < versions.length; ++i) {
-      if (datasize <= Info.Data[parseInt(versions[i])][level].Size) {
+      if (dataSize <= Info.Data[parseInt(versions[i])][level].Size) {
         return <QRLiteVersion> parseInt(versions[i]);
       }
     }
@@ -255,24 +255,24 @@ export class Generator implements QRLiteGenerator {
     return 0;
   }
 
-  private calcLengthBitarray(
-    datasize: number,
+  private calcLengthBitArray(
+    dataSize: number,
     version: number,
-    level: QRLiteLevel,
+    _level: QRLiteLevel,
   ) {
-    const bitlen = version <= 9 ? 8 : 16;
+    const bitLen = version <= 9 ? 8 : 16;
     const byte: number[] = [];
-    for (let i = bitlen - 1; 0 <= i; --i) {
-      byte[i] = datasize % 2;
-      datasize = Math.floor(datasize / 2);
+    for (let i = bitLen - 1; 0 <= i; --i) {
+      byte[i] = dataSize % 2;
+      dataSize = Math.floor(dataSize / 2);
     }
     return byte;
   }
 
-  private spritDataBlock(byte: Uint8Array, rsblocks: QRLiteRSBlock[]) {
+  private spritDataBlock(byte: Uint8Array, rsBlocks: QRLiteRSBlock[]) {
     const blocks: Uint8Array[] = [];
     let begin = 0;
-    rsblocks.forEach((info) => {
+    rsBlocks.forEach((info) => {
       for (let i = 0; i < info.count; ++i) {
         blocks.push(byte.slice(begin, begin + info.block[1]));
         begin += info.block[1];

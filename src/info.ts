@@ -3810,10 +3810,10 @@ export const Info: QRLiteInfo = {
     0: (i: number, j: number) => {
       return (i + j) % 2 === 0;
     },
-    1: (i: number, j: number) => {
+    1: (_i: number, j: number) => {
       return j % 2 === 0;
     },
-    2: (i: number, j: number) => {
+    2: (i: number, _j: number) => {
       return i % 3 === 0;
     },
     3: (i: number, j: number) => {
