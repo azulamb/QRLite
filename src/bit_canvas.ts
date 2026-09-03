@@ -6,58 +6,58 @@ import type { QRLiteBitCanvas, QRLiteLevel } from "./types.ts";
 export class BitCanvas implements QRLiteBitCanvas {
   public width: number;
   public height: number;
-  private bitarray: boolean[]; // true = black, false = white, undefined = transpart.
+  private bitArray: boolean[]; // true = black, false = white, undefined = transparent.
 
   constructor(w: number, h: number) {
     this.width = w;
     this.height = h;
-    this.bitarray = new Array<boolean>(w * h);
+    this.bitArray = new Array<boolean>(w * h);
   }
 
   public clone(): QRLiteBitCanvas {
     const canvas = new BitCanvas(this.width, this.height);
-    canvas.drawFromBitarray(this.bitarray);
+    canvas.drawFromBitArray(this.bitArray);
 
     return canvas;
   }
 
   public reverse(func: (i: number, j: number) => boolean, mask: boolean[]) {
-    for (let i = 0; i < this.bitarray.length; ++i) {
+    for (let i = 0; i < this.bitArray.length; ++i) {
       if (!mask[i] || !func(i % this.width, Math.floor(i / this.width))) {
         continue;
       }
-      this.bitarray[i] = !this.bitarray[i];
+      this.bitArray[i] = !this.bitArray[i];
     }
     return this;
   }
 
   public getPixel(x: number, y: number) {
     if (x < 0 || this.width <= x || y < 0 || this.height <= y) {
-      return <boolean> <any> undefined;
+      return undefined;
     }
-    return this.bitarray[y * this.width + x];
+    return this.bitArray[y * this.width + x];
   }
 
   public getPixels() {
-    return this.bitarray;
+    return this.bitArray;
   }
 
   public drawPixel(x: number, y: number, black: boolean) {
     if (x < 0 || this.width <= x || y < 0 || this.height <= y) return this;
-    this.bitarray[y * this.width + x] = !!black;
+    this.bitArray[y * this.width + x] = !!black;
     return this;
   }
 
-  public drawFromBitarray(bitarray: boolean[]) {
-    for (let i = 0; i < bitarray.length && i < this.bitarray.length; ++i) {
-      this.bitarray[i] = !!bitarray[i];
+  public drawFromBitArray(bitArray: boolean[]) {
+    for (let i = 0; i < bitArray.length && i < this.bitArray.length; ++i) {
+      this.bitArray[i] = !!bitArray[i];
     }
     return this;
   }
 
   public isTransparentPixel(x: number, y: number) {
     if (x < 0 || this.width <= x || y < 0 || this.height <= y) return false;
-    return this.bitarray[y * this.width + x] === undefined;
+    return this.bitArray[y * this.width + x] === undefined;
   }
 
   public drawTimingPattern() {
@@ -149,12 +149,6 @@ export class BitCanvas implements QRLiteBitCanvas {
         W,
         W,
       ];
-      let a = 0;
-      if (data[0]) a = 4;
-      else if (data[1]) a = 3;
-      else if (data[2]) a = 2;
-      else if (data[3]) a = 1;
-      else if (data[4]) a = 0;
 
       const g = [B, W, B, W, W, B, B, W, B, B, B];
 
@@ -408,9 +402,9 @@ export class BitCanvas implements QRLiteBitCanvas {
           continue;
         }
         // Move up/down.
-        let nexty = this.existsEmpty(cursor.x, cursor.y, cursor.up);
+        let nextY = this.existsEmpty(cursor.x, cursor.y, cursor.up);
         // Check up/down right
-        while (nexty < 0) {
+        while (nextY < 0) {
           // Check left line;
           if (this.noEmptyLine(cursor.x - 2)) --cursor.x;
           // Move left line.
@@ -419,10 +413,10 @@ export class BitCanvas implements QRLiteBitCanvas {
           cursor.y = cursor.up ? this.height - 1 : 0;
           cursor.x -= 2;
           if (cursor.x < 0) break;
-          nexty = this.existsEmpty(cursor.x, cursor.y, cursor.up);
+          nextY = this.existsEmpty(cursor.x, cursor.y, cursor.up);
         }
         if (cursor.x < 0) break;
-        cursor.y = nexty;
+        cursor.y = nextY;
       } else {
         // Left side.
 
@@ -430,9 +424,9 @@ export class BitCanvas implements QRLiteBitCanvas {
         cursor.right = true;
 
         // Move up/down.
-        let nexty = this.existsEmpty(cursor.x, cursor.y, cursor.up);
+        let nextY = this.existsEmpty(cursor.x, cursor.y, cursor.up);
         // Check up/down right
-        while (nexty < 0) {
+        while (nextY < 0) {
           // Check left line;
           if (this.noEmptyLine(cursor.x - 2)) --cursor.x;
           // Move left line.
@@ -441,10 +435,10 @@ export class BitCanvas implements QRLiteBitCanvas {
           cursor.y = cursor.up ? this.height - 1 : 0;
           cursor.x -= 2;
           if (cursor.x < 0) break;
-          nexty = this.existsEmpty(cursor.x, cursor.y, cursor.up);
+          nextY = this.existsEmpty(cursor.x, cursor.y, cursor.up);
         }
         if (cursor.x < 0) break;
-        cursor.y = nexty;
+        cursor.y = nextY;
 
         if (this.isTransparentPixel(cursor.x, cursor.y)) {
           // Right side.
@@ -465,8 +459,8 @@ export class BitCanvas implements QRLiteBitCanvas {
     const length = this.width * this.height;
     let count = 0;
     for (let i = 0; i < length; ++i) {
-      if (this.bitarray[i] === undefined) {
-        this.bitarray[i] = color;
+      if (this.bitArray[i] === undefined) {
+        this.bitArray[i] = color;
         ++count;
       }
     }
@@ -516,9 +510,9 @@ export class BitCanvas implements QRLiteBitCanvas {
       const line: string[] = [];
       for (let x = 0; x < this.width; ++x) {
         line.push(
-          this.bitarray[y * this.height + x] === undefined
+          this.bitArray[y * this.height + x] === undefined
             ? none
-            : (this.bitarray[y * this.height + x] ? black : white),
+            : (this.bitArray[y * this.height + x] ? black : white),
         );
       }
       lines.push(line.join(""));

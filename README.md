@@ -71,7 +71,7 @@ const datacode = qr.createDataCode();
 
 // Raw QR Code.
 qr.drawData(datacode[0], datacode[1]);
-const rawcanvas = qr.get();
+const rawCanvas = qr.get();
 
 // Get masked canvases.(masked[ 0-7 ] = QRLite.Canvas)
 const masked = qr.createMaskedQRCode();
@@ -80,10 +80,10 @@ const masked = qr.createMaskedQRCode();
 // console.log( qr.evaluateQRCode( masked ) );
 
 // Select mask number.
-const masknum = qr.selectQRCode(masked);
+const maskNum = qr.selectQRCode(masked);
 
 // QR Code.
-const canvas = masked[masknum];
+const canvas = masked[maskNum];
 
 // Output to console.
 canvas.print();
@@ -122,7 +122,7 @@ BitやByte周りの操作は別クラスで行い、QRコードの画像とし�
 
 （例えば最後の評価部分だけ自分でやるとか、データや誤り訂正コードだけ自作とかも可能。）
 
-### convert(datastr: string, option?: QRLiteConvertOption): QRLiteBitCanvas
+### convert(dataStr: string, option?: QRLiteConvertOption): QRLiteBitCanvas
 
 データを与えることで一番良いQRコードを返します。レベルの指定も可能です。
 

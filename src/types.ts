@@ -91,7 +91,7 @@ export interface QRLiteBitCanvas {
   width: number;
   height: number;
   /**
-   * @retrun Create new canvas & copy.
+   * @return Create new canvas & copy.
    */
   clone(): QRLiteBitCanvas;
   /**
@@ -99,7 +99,7 @@ export interface QRLiteBitCanvas {
    * @param y
    * @return true = Black. other = White.
    */
-  getPixel(x: number, y: number): boolean;
+  getPixel(x: number, y: number): boolean | undefined;
   /**
    * @returns Get all pixels. true = Black. other = White.
    */
@@ -182,7 +182,7 @@ export interface QRLiteGenerator {
   getLevel(): QRLiteLevel;
   /**
    * @param level Set level.
-   * @return Setted level.
+   * @return Set level.
    */
   setLevel(level: QRLiteLevel): QRLiteLevel;
   /**
@@ -191,7 +191,7 @@ export interface QRLiteGenerator {
   getVersion(): QRLiteVersion | 0;
   /**
    * @param version Set version. 0 = auto.
-   * @return Setted version.
+   * @return Set version.
    */
   setVersion(version?: QRLiteVersion | 0): QRLiteVersion | 0;
   /**
@@ -230,9 +230,9 @@ export interface QRLiteGenerator {
    */
   selectQRCode(qrcodes: QRLiteBitCanvas[]): QRLiteMask;
   /**
-   * @param datastr Set QRCode data.
+   * @param dataStr Set QRCode data.
    * @param option Generate option.
    * @return QRCode.
    */
-  convert(datastr: string, option?: QRLiteConvertOption): QRLiteBitCanvas;
+  convert(dataStr: string, option?: QRLiteConvertOption): QRLiteBitCanvas;
 }
