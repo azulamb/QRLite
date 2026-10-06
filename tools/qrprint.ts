@@ -1,15 +1,31 @@
 #!/usr/bin/env -S deno run
+/**
+ * Render QR codes with Unicode half blocks, or run the Deno terminal command.
+ *
+ * @example
+ * ```sh
+ * deno run jsr:@azulamb/qrlite/qrprint "https://example.com"
+ * ```
+ * @module
+ */
 
 import { convert, type QRLiteBitCanvas, Version } from "../mod.ts";
 
+/** Terminal rendering colors and quiet-zone options. */
 export interface QRPrintOptions {
+  /** Use black foreground modules for a light terminal background. */
   invert: boolean;
+  /** Quiet-zone width in modules; must be a non-negative integer. */
   margin: number;
 }
 
-interface ParsedArguments extends QRPrintOptions {
+/** Parsed terminal arguments. */
+export interface ParsedArguments extends QRPrintOptions {
+  /** Whether help was requested. */
   help: boolean;
+  /** Whether the package version was requested. */
   version: boolean;
+  /** Text to encode, when supplied. */
   text?: string;
 }
 
@@ -38,6 +54,7 @@ function parseMargin(value: string | undefined): number {
   return margin;
 }
 
+/** Parse CLI flags and text; throw on invalid options or margins. */
 export function parseArguments(args: string[]): ParsedArguments {
   const result: ParsedArguments = {
     help: false,
@@ -96,6 +113,7 @@ function selectBlock(top: boolean, bottom: boolean): string {
   return " ";
 }
 
+/** Render a canvas as half-block text, including the requested quiet zone. */
 export function renderTerminal(
   canvas: QRLiteBitCanvas,
   options: QRPrintOptions,
@@ -129,6 +147,7 @@ export function renderTerminal(
   return lines.join("\n");
 }
 
+/** Run the command with supplied arguments and return zero on success or one on error. */
 export function run(args: string[]): number {
   let options: ParsedArguments;
   try {

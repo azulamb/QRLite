@@ -13,6 +13,7 @@ import type {
   QRLiteVersion,
 } from "./types.ts";
 
+/** Stateful QR encoder supporting custom mask scoring and intermediate codewords. */
 export class Generator implements QRLiteGenerator {
   private level: QRLiteLevel;
   private version: QRLiteVersion | 0;
@@ -22,21 +23,25 @@ export class Generator implements QRLiteGenerator {
   private mask!: boolean[];
   private rating!: QRLiteRating;
 
+  /** Create a generator with correction level Q and automatic version selection. */
   constructor() {
     this.level = "Q";
     this.version = 0;
     this.setRating();
   }
 
-  public get() {
+  /** Return the working canvas initialized by setData or setVersion, before mask selection. */
+  public get(): QRLiteBitCanvas {
     return this.canvas;
   }
 
-  public getLevel() {
+  /** Return the current error correction level. */
+  public getLevel(): QRLiteLevel {
     return this.level;
   }
 
-  public setLevel(level: QRLiteLevel) {
+  /** Set the correction level; invalid runtime values fall back to Q. */
+  public setLevel(level: QRLiteLevel): QRLiteLevel {
     if (level !== "L" && level !== "M" && level !== "Q" && level !== "H") {
       level = "Q";
     }
@@ -44,11 +49,13 @@ export class Generator implements QRLiteGenerator {
     return this.level;
   }
 
-  public getVersion() {
+  /** Return the selected version, or zero when no version fits. */
+  public getVersion(): QRLiteVersion | 0 {
     return this.version;
   }
 
-  public setVersion(version = 0) {
+  /** Initialize a canvas for the requested minimum version; zero selects automatically. */
+  public setVersion(version = 0): QRLiteVersion | 0 {
     version = Math.floor(version);
     const data = this.rawData || "";
 
@@ -83,15 +90,18 @@ export class Generator implements QRLiteGenerator {
     return this.version;
   }
 
-  public getLastMask() {
+  /** Return the mask selected by the most recent convert call. */
+  public getLastMask(): QRLiteMask | 0 {
     return this.lastMask;
   }
 
-  public setRating(rating?: QRLiteRating) {
+  /** Set a custom penalty evaluator, or restore the default when omitted. */
+  public setRating(rating?: QRLiteRating): void {
     this.rating = rating || new DefaultRating();
   }
 
-  public setData(data: string | Uint8Array) {
+  /** Set UTF-8 text or bytes and select a version; return null if capacity is exceeded. */
+  public setData(data: string | Uint8Array): Uint8Array | null {
     this.rawData = (typeof data === "string")
       ? this.convertStringByte(data)
       : data;
@@ -102,7 +112,8 @@ export class Generator implements QRLiteGenerator {
     return this.rawData;
   }
 
-  public createDataCode() {
+  /** Return interleaved data codewords followed by error correction codewords. */
+  public createDataCode(): Uint8Array[] {
     if (!this.rawData || this.version <= 0) {
       throw new RangeError("Data is not set or is too large.");
     }
@@ -116,13 +127,15 @@ export class Generator implements QRLiteGenerator {
     return datacode;
   }
 
-  public drawData(data: Uint8Array, ec: Uint8Array) {
+  /** Write data and error correction codewords onto the working canvas. */
+  public drawData(data: Uint8Array, ec: Uint8Array): void {
     const cursor = this.canvas.drawQRByte(data);
     this.canvas.drawQRByte(ec, cursor);
     this.canvas.fillEmpty();
   }
 
-  public createMaskedQRCode() {
+  /** Return eight candidate canvases in mask index order. */
+  public createMaskedQRCode(): QRLiteBitCanvas[] {
     const masked: QRLiteBitCanvas[] = [];
     for (let maskNum = 0; maskNum < 8; ++maskNum) {
       masked.push(this.canvas.clone().reverse(Info.Mask[maskNum], this.mask));
@@ -135,13 +148,15 @@ export class Generator implements QRLiteGenerator {
     return masked;
   }
 
-  public evaluateQRCode(qrcodes: QRLiteBitCanvas[]) {
+  /** Return the penalty for each candidate canvas. */
+  public evaluateQRCode(qrcodes: QRLiteBitCanvas[]): number[] {
     return qrcodes.map((canvas) => {
       return this.rating.calc(canvas);
     });
   }
 
-  public selectQRCode(qrcodes: QRLiteBitCanvas[]) {
+  /** Return the index of the lowest-penalty candidate. */
+  public selectQRCode(qrcodes: QRLiteBitCanvas[]): QRLiteMask {
     const points = this.evaluateQRCode(qrcodes);
     let maskNum = 0;
     let minPoint = points[0];
@@ -154,7 +169,11 @@ export class Generator implements QRLiteGenerator {
     return <QRLiteMask> maskNum;
   }
 
-  public convert(dataStr: string, option: QRLiteConvertOption = {}) {
+  /** Encode text and return the selected masked canvas; throw RangeError if too large. */
+  public convert(
+    dataStr: string,
+    option: QRLiteConvertOption = {},
+  ): QRLiteBitCanvas {
     const _newLevel = this.setLevel(option.level || this.level);
 
     if (this.setData(dataStr) === null) {
@@ -183,11 +202,12 @@ export class Generator implements QRLiteGenerator {
     return masked[this.lastMask];
   }
 
+  /** Encode and pad the byte payload, then split it into RS blocks. */
   private createDataBlock(
     level: QRLiteLevel,
     version: number,
     data: Uint8Array,
-  ) {
+  ): Uint8Array[] {
     const byte = new Byte(Info.Data[version][level].DataCode);
 
     // Byte mode.
@@ -211,11 +231,12 @@ export class Generator implements QRLiteGenerator {
     return this.spritDataBlock(byte.get(), Info.Data[version][level].RS);
   }
 
+  /** Compute Reed-Solomon parity for each data block. */
   private createECBlock(
     level: QRLiteLevel,
     version: number,
     blocks: Uint8Array[],
-  ) {
+  ): Uint8Array[] {
     const countEC = this.countErrorCode(version, level);
     const g = Info.G[countEC];
 
@@ -236,10 +257,12 @@ export class Generator implements QRLiteGenerator {
     });
   }
 
-  private convertStringByte(data: string) {
+  /** Encode text as UTF-8 bytes. */
+  private convertStringByte(data: string): Uint8Array {
     return new TextEncoder().encode(data);
   }
 
+  /** Find the smallest version fitting the payload. */
   private searchVersion(
     dataSize: number,
     level: QRLiteLevel,
@@ -255,11 +278,12 @@ export class Generator implements QRLiteGenerator {
     return 0;
   }
 
+  /** Encode the byte-mode character count. */
   private calcLengthBitArray(
     dataSize: number,
     version: number,
     _level: QRLiteLevel,
-  ) {
+  ): number[] {
     const bitLen = version <= 9 ? 8 : 16;
     const byte: number[] = [];
     for (let i = bitLen - 1; 0 <= i; --i) {
@@ -269,7 +293,11 @@ export class Generator implements QRLiteGenerator {
     return byte;
   }
 
-  private spritDataBlock(byte: Uint8Array, rsBlocks: QRLiteRSBlock[]) {
+  /** Split padded bytes according to the block table. */
+  private spritDataBlock(
+    byte: Uint8Array,
+    rsBlocks: QRLiteRSBlock[],
+  ): Uint8Array[] {
     const blocks: Uint8Array[] = [];
     let begin = 0;
     rsBlocks.forEach((info) => {
@@ -281,7 +309,8 @@ export class Generator implements QRLiteGenerator {
     return blocks;
   }
 
-  private countErrorCode(version: number, level: QRLiteLevel) {
+  /** Return the parity codeword count per block. */
+  private countErrorCode(version: number, level: QRLiteLevel): number {
     const code = Info.Data[version][level].ECCode;
     let count = 0;
     Info.Data[version][level].RS.forEach((block) => {
@@ -290,7 +319,8 @@ export class Generator implements QRLiteGenerator {
     return Math.floor(code / count);
   }
 
-  private interleaveArrays(list: Uint8Array[]) {
+  /** Interleave block bytes column by column. */
+  private interleaveArrays(list: Uint8Array[]): Uint8Array {
     const size = list.map((v) => {
       return v.length;
     }).reduce((prev, current) => {
@@ -308,7 +338,8 @@ export class Generator implements QRLiteGenerator {
     return byte;
   }
 
-  private convertMask(canvas: QRLiteBitCanvas) {
+  /** Identify writable modules on the working canvas. */
+  private convertMask(canvas: QRLiteBitCanvas): boolean[] {
     const _mask = canvas.getPixels();
     const mask: boolean[] = [];
     for (let i = 0; i < _mask.length; ++i) mask.push(_mask[i] === undefined);

@@ -1,0 +1,26 @@
+name: Publish to JSR
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: jsr-publish
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.7
+      - run: deno task publish:check
+      - name: Publish with GitHub OIDC provenance
+        run: deno publish

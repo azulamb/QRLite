@@ -10,6 +10,15 @@ Byteモード、誤り訂正レベルL/M/Q/H、Version
 
 - Deno 2.x
 
+## インストール
+
+```sh
+deno add jsr:@azulamb/qrlite
+```
+
+以下はJSRから直接インポートする例です。リポジトリ内で開発する場合は
+`./mod.ts`からインポートできます。
+
 ## 使い方
 
 公開APIはルートの`mod.ts`に集約されています。
@@ -20,13 +29,13 @@ import {
   Generator,
   type QRLiteBitCanvas,
   type QRLiteConvertOption,
-} from "./mod.ts";
+} from "jsr:@azulamb/qrlite";
 ```
 
 ### QRコードを生成する
 
 ```ts
-import { convert } from "./mod.ts";
+import { convert } from "jsr:@azulamb/qrlite";
 
 const canvas = convert("https://example.com", {
   level: "Q",
@@ -59,7 +68,7 @@ interface QRLiteConvertOption {
 ### BMPファイルとして保存する
 
 ```ts
-import { convert } from "./mod.ts";
+import { convert } from "jsr:@azulamb/qrlite";
 
 const canvas = convert("Deno");
 const bitmap = new Uint8Array(canvas.outputBitmapByte());
@@ -81,7 +90,7 @@ deno run --allow-write example.ts
 生成工程を個別に操作する場合は`Generator`を使用します。
 
 ```ts
-import { Generator } from "./mod.ts";
+import { Generator } from "jsr:@azulamb/qrlite";
 
 const generator = new Generator();
 
@@ -175,7 +184,7 @@ deno task qrprint --invert --margin 2 "Hello, Deno!"
 ローカルコマンドとしてインストールする場合:
 
 ```sh
-deno install --global --name qrprint ./tools/qrprint.ts
+deno install --global --name qrprint jsr:@azulamb/qrlite/qrprint
 qrprint "https://example.com"
 ```
 

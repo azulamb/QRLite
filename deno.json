@@ -1,17 +1,36 @@
 {
+  "name": "@azulamb/qrlite",
+  "version": "2.0.0",
+  "license": "MIT",
   "exports": {
     ".": "./mod.ts",
     "./qrprint": "./tools/qrprint.ts"
   },
   "tasks": {
     "build": "deno bundle --minify --platform=browser --output=./docs/qrlite.js ./browser.ts",
-    "check": "deno check mod.ts browser.ts test/all.test.ts test/info.test.ts test/qrprint.test.ts scripts/check_release.ts tools/qrprint.ts",
+    "check": "deno check mod.ts browser.ts test/all.test.ts test/info.test.ts test/qrprint.test.ts scripts/check_release.ts tools/qrprint.ts scripts/check_package.ts",
     "test": "deno test test/all.test.ts test/info.test.ts test/qrprint.test.ts",
-    "verify": "deno task check && deno task test",
+    "verify": "deno task check && deno task test && deno task doc:check && deno task package:check",
     "release:check": "deno task verify && deno run --allow-run=git scripts/check_release.ts",
-    "qrprint": "deno run tools/qrprint.ts"
+    "qrprint": "deno run tools/qrprint.ts",
+    "doc:check": "deno doc --lint mod.ts tools/qrprint.ts",
+    "package:check": "deno run scripts/check_package.ts",
+    "publish:check": "deno task verify && deno publish --dry-run"
   },
   "fmt": {
-    "exclude": ["docs/qrlite.js"]
+    "exclude": [
+      "docs/qrlite.js"
+    ]
+  },
+  "publish": {
+    "include": [
+      "deno.json",
+      "mod.ts",
+      "src/**/*.ts",
+      "tools/qrprint.ts",
+      "README.md",
+      "DEVELOPMENT.md",
+      "LICENSE"
+    ]
   }
 }

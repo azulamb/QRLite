@@ -92,3 +92,20 @@ deno task release:check
 ```
 
 `release:check`は型検査とテストに加え、`src/constants.ts`の`Version`がSemVer形式であること、ローカルの最新Gitタグより新しいこと、同じバージョンのタグが存在しないことを確認します。タグは`1.2.3`と`v1.2.3`の両形式に対応し、条件を満たさない場合は終了コード1を返します。
+
+## JSRへの公開
+
+1. `deno.json`の`version`を更新します。公開APIの`Version`もこの値を参照します。
+2. `deno task release:check`と`deno task publish:check`を実行します。
+3. 変更をコミット・pushします。この時点ではタグを作成しません。
+4. GitHubのActionsで「Publish to JSR」を開き、Run
+   workflowから公開対象のブランチを選んで手動実行します。
+   手動実行を利用するには、このワークフローをデフォルトブランチにも反映しておきます。
+5. ワークフローとJSRで公開成功を確認し、その実行で使用したコミットSHAに正式なタグを付けてpushします。
+
+例（`<公開したコミットSHA>`は成功したActions実行のSHAに置き換えます）:
+
+```sh
+git tag v2.0.0 <公開したコミットSHA>
+git push origin v2.0.0
+```
